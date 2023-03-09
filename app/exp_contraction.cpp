@@ -26,10 +26,12 @@
 #include "io/io_utils.h"
 #include "parse_parameters.h"
 #include "timer.h"
+#include <backward.hpp>
 
 #include "components/exponential_contraction.h"
 
 int main(int argn, char **argv) {
+  backward::SignalHandling sh;
   // Init MPI
   MPI_Init(&argn, &argv);
   PEID rank, size;
@@ -83,7 +85,7 @@ int main(int argn, char **argv) {
 
     t.Restart();
     StaticGraph G(conf, rank, size);
-    IOUtility::LoadGraph(G, conf, rank, size);
+    IOUtility::LoadGraph(G, conf, MPI_COMM_WORLD);
     if (i == 0) IOUtility::PrintGraphParams(G, conf, rank, size);
 
     // Reset timers
@@ -106,7 +108,7 @@ int main(int argn, char **argv) {
     local_time = t.Elapsed();
 
     // Print labels
-    // G.OutputComponents(labels);
+    G.OutputComponents(labels);
 
     // Gather total time
     MPI_Reduce(&local_time, &total_time, 1, MPI_FLOAT, MPI_MAX, ROOT,

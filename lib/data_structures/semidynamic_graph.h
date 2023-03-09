@@ -301,16 +301,16 @@ class SemidynamicGraph {
   VertexID GatherNumberOfGlobalEdges(bool force=true) {
     if (number_of_global_edges_ == 0 || force) {
       number_of_global_edges_ = 0;
-#ifndef NDEBUG
-      VertexID local_edges = 0;
-      ForallVertices([&](const VertexID v) { 
-          ForallNeighbors(v, [&](const VertexID w) { local_edges++; });
-      });
-      if (local_edges != number_of_edges_) {
-        std::cout << "This shouldn't happen (different number of edges local=" << local_edges << ", counter=" << number_of_edges_ << ")" << std::endl;
-        exit(1);
-      }
-#endif
+// #ifndef NDEBUG
+//       VertexID local_edges = 0;
+//       ForallVertices([&](const VertexID v) { 
+//           ForallNeighbors(v, [&](const VertexID w) { local_edges++; });
+//       });
+//       if (local_edges != number_of_edges_) {
+//         std::cout << "This shouldn't happen (different number of edges local=" << local_edges << ", counter=" << number_of_edges_ << ")" << std::endl;
+//         exit(1);
+//       }
+// #endif
       // Check if all PEs are done
       comm_timer_.Restart();
       MPI_Allreduce(&number_of_edges_,
@@ -367,8 +367,7 @@ class SemidynamicGraph {
     } else {
 #ifndef NDEBUG
       if (rank == size_) {
-        std::cout << "This shouldn't happen" << std::endl;
-        exit(1);
+        throw "This shouldn't happen";
       }
       if (IsGhostFromGlobal(to)) { // true if ghost already in map, otherwise false
         local_vertices_data_[from].is_interface_vertex_ = true;
@@ -376,8 +375,8 @@ class SemidynamicGraph {
         AddGhostEdge(from, to);
         SetAdjacentPE(rank, true);
       } else {
-        std::cout << "This shouldn't happen" << std::endl;
-        exit(1);
+        //std::cout << "This shouldn't happen" << std::endl;
+        throw "This shouldn't happen";
       }
 #else 
       local_vertices_data_[from].is_interface_vertex_ = true;

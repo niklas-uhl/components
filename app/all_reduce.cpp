@@ -76,7 +76,7 @@ int main(int argn, char **argv) {
 
     t.Restart();
     StaticGraph G(conf, rank, size);
-    IOUtility::LoadGraph(G, conf, rank, size);
+    IOUtility::LoadGraph(G, conf, MPI_COMM_WORLD);
     if (i == 0) IOUtility::PrintGraphParams(G, conf, rank, size);
 
     // Reset timers

@@ -25,15 +25,18 @@
 #include "config.h"
 #include "definitions.h"
 #include "io/graph_io.h"
-#include "kagen_interface.h"
+#include <kagen.h>
 
 class IOUtility {
  public:
   template<typename GraphType>
   static void LoadGraph(GraphType &g, 
                         Config &config,
-                        PEID rank, PEID size) {
+                        MPI_Comm comm) {
     // File I/O
+    int rank, size;
+    MPI_Comm_rank(comm, &rank);
+    MPI_Comm_size(comm, &size);
     if (config.input_type == "file") {
       GraphIO::ReadMETISFile<GraphType>(g, config, rank, size, MPI_COMM_WORLD);
     } else if (config.input_type == "edgefile") {
@@ -44,7 +47,7 @@ class IOUtility {
       GraphIO::ReadSortedBinaryFile<GraphType>(g, config, rank, size, MPI_COMM_WORLD);
     } else if (config.gen != "null") {
       // Generator I/O
-      kagen::KaGen gen(rank, size);
+      kagen::KaGen gen(comm);
       kagen::EdgeList edge_list;
       GenerateSyntheticGraph(gen, config, edge_list);
       GraphIO::ReadMETISGenerator<GraphType>(g, config, rank, size, MPI_COMM_WORLD, edge_list);
@@ -59,22 +62,23 @@ class IOUtility {
   static void GenerateSyntheticGraph(kagen::KaGen &gen,
                                      Config &config,
                                      kagen::EdgeList &edge_list) {
+      gen.SetSeed(config.seed);
       if (config.gen == "gnm_undirected")
-          edge_list = gen.GenerateUndirectedGNM(config.gen_n, config.gen_m, config.gen_k, config.seed);
+          edge_list = gen.GenerateUndirectedGNM(config.gen_n, config.gen_m).TakeEdges();
       else if (config.gen == "rdg_2d")
-          edge_list = gen.Generate2DRDG(config.gen_n, config.gen_k, config.seed);
+          edge_list = gen.GenerateRDG2D(config.gen_n, config.gen_periodic).TakeEdges();
       else if (config.gen == "rdg_3d")
-          edge_list = gen.Generate3DRDG(config.gen_n, config.gen_k, config.seed);
+          edge_list = gen.GenerateRDG3D(config.gen_n).TakeEdges();
       else if (config.gen == "rgg_2d")
-          edge_list = gen.Generate2DRGG(config.gen_n, config.gen_r, config.gen_k, config.seed);
+          edge_list = gen.GenerateRGG2D(config.gen_n, config.gen_r).TakeEdges();
       else if (config.gen == "rgg_3d")
-          edge_list = gen.Generate3DRGG(config.gen_n, config.gen_r, config.gen_k, config.seed);
+          edge_list = gen.GenerateRGG3D(config.gen_n, config.gen_r).TakeEdges();
       else if (config.gen == "rhg")
-          edge_list = gen.GenerateRHG(config.gen_n, config.gen_gamma, config.gen_d, config.gen_k, config.seed);
+          edge_list = gen.GenerateRHG(config.gen_n, config.gen_gamma, config.gen_d).TakeEdges();
       else if (config.gen == "ba")
-          edge_list = gen.GenerateBA(config.gen_n, config.gen_d, config.gen_k, config.seed);
+          edge_list = gen.GenerateBA(config.gen_n, config.gen_d).TakeEdges();
       else if (config.gen == "grid_2d")
-          edge_list = gen.Generate2DGrid(config.gen_n, config.gen_m, config.gen_p, config.gen_periodic, config.gen_k, config.seed);
+          edge_list = gen.GenerateGrid2D(config.gen_n, config.gen_m, config.gen_p, config.gen_periodic).TakeEdges();
       else {
         std::cout << "Generator not supported" << std::endl;
         MPI_Finalize();

@@ -433,14 +433,17 @@ class GraphIO {
     std::pair<VertexID, VertexID> first_vertex_range 
       = {std::numeric_limits<VertexID>::max(), std::numeric_limits<VertexID>::max()};
 
+#ifdef USE_CONNECT_IO
     // TODO: Connect IO
     //Object of the graph generator class
     mxx::comm mxx_comm;
     conn::graphGen::GraphFileParser<char *, VertexID> connect_g(edge_list, first_vertex, last_vertex, first_vertex_range, config.input_file, mxx_comm);
     connect_g.populateEdgeList();
 
+#else
     // OLD IO
-    // ParseEdgeFilestream(in, from, to, first_vertex, last_vertex, first_vertex_range, edge_list);
+    ParseEdgeFilestream(in, from, to, first_vertex, last_vertex, first_vertex_range, edge_list);
+#endif
 
     // Determine local and ghost vertices
     google::dense_hash_set<VertexID> ghost_vertices; 

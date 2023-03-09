@@ -1,6 +1,9 @@
 [submodule "extern/kagen"]
 	path = extern/kagen
 	url = https://github.com/sebalamm/KaGen
-[submodule "extern/KaHIP"]
-	path = extern/KaHIP
-	url = git@github.com:schulzchristian/KaHIP.git
+[submodule "extern/ips4o"]
+	path = extern/ips4o
+	url = https://github.com/ips4o/ips4o.git
+[submodule "extern/bliss"]
+	path = extern/bliss
+	url = https://github.com/ParBLiSS/kmerind

@@ -30,9 +30,9 @@
 #include <iostream>
 
 //External includes
-#include "io/file_loader.hpp"
-#include "common/base_types.hpp"
-#include "mxx/comm.hpp"
+#include <io/file_loader.hpp>
+#include <common/base_types.hpp>
+#include <mxx/comm.hpp>
 
 
 namespace conn 
