@@ -20,7 +20,7 @@ endif()
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${KACOMP_DEFINITIONS}")
 
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MPI_COMPILE_FLAGS} -std=c++14 -fno-omit-frame-pointer -march=native -DNDEBUG -DNSTATUS -DNWARMUP -Wall -fPIC -O3 -g")
-list(APPEND KACOMP_DEFINITIONS "-DNSTATUS" "-DNWARMUP" "-DNDEBUG")
+list(APPEND KACOMP_DEFINITIONS "-DNSTATUS" "-DNWARMUP")
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MPI_COMPILE_FLAGS} -fsanitize=address -std=c++14 -fno-omit-frame-pointer -march=native -fno-stack-limit -Wall -fPIC -Og -g")
 #set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} ${MPI_LINK_FLAGS}")
 

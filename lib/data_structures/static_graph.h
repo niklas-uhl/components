@@ -339,18 +339,18 @@ class StaticGraph {
   VertexID GatherNumberOfGlobalEdges(bool force=true) {
     if (number_of_global_edges_ == 0 || force) {
       number_of_global_edges_ = 0;
-// #ifndef NDEBUG
-//       VertexID local_edges = 0;
-//       ForallVertices([&](const VertexID v) { 
-//           ForallNeighbors(v, [&](const VertexID w) { local_edges++; });
-//       });
-//       if (local_edges != number_of_edges_) {
-//         std::stringstream out;
-//         out << "This shouldn't happen (different number of edges local="
-//             << local_edges << ", counter=" << number_of_edges_ << ")";
-//         throw std::runtime_error(out.str());
-//       }
-// #endif
+ #ifndef NDEBUG
+       VertexID local_edges = 0;
+       ForallVertices([&](const VertexID v) { 
+           ForallNeighbors(v, [&](const VertexID w) { local_edges++; });
+       });
+       if (local_edges != number_of_edges_) {
+         std::stringstream out;
+         out << "This shouldn't happen (different number of edges local="
+             << local_edges << ", counter=" << number_of_edges_ << ")";
+         throw std::runtime_error(out.str());
+       }
+ #endif
       // Check if all PEs are done
       comm_timer_.Restart();
       MPI_Allreduce(&number_of_edges_,

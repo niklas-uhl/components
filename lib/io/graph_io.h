@@ -33,6 +33,8 @@
 #include "ips4o.hpp"
 #include "connect_io.h"
 #include "config.h"
+#include "kagen.h"
+#include "kagen/tools/statistics.h"
 #include "utils.h"
 #include "comm_utils.h"
 #include "dynamic_graph.h"
@@ -143,6 +145,7 @@ class GraphIO {
     // Sort edges for static graphs
     if constexpr (std::is_same<GraphType, StaticGraphCommunicator>::value
                   || std::is_same<GraphType, StaticGraph>::value) {
+    // NUHL: just sorts the edges globally, does not depend on `g`
       SortEdges<GraphType>(g, edge_list);
     }
 
@@ -290,34 +293,31 @@ class GraphIO {
       std::cerr << "Error opening " << filename << std::endl;
       exit(0);
     }
+    kagen::KaGen gen(comm);
+    auto result =
+        gen.ReadFromFile(filename, kagen::StaticGraphFormat::METIS,
+                         kagen::StaticGraphDistribution::BALANCE_VERTICES);
 
-    VertexID number_of_global_vertices = 0;
-    EdgeID number_of_global_edges = 0;
-
-    std::getline(in, line);
-    while (line[0] == '%') std::getline(in, line);
-
-    std::stringstream ss(line);
-    ss >> number_of_global_vertices;
-    ss >> number_of_global_edges;
+    VertexID from = result.vertex_range.first;
+    VertexID to = result.vertex_range.second;
+    auto number_of_local_vertices =  to - from;
+    auto number_of_local_edges = result.edges.size();
+    auto number_of_global_edges = kagen::FindNumberOfGlobalEdges(result.edges, comm);
+    auto number_of_global_vertices = kagen::FindNumberOfGlobalNodes(result.vertex_range, comm);
 
     config.n = number_of_global_vertices;
     config.m = number_of_global_edges;
 
-    // Read the lines i*ceil(n/size) to (i+1)*floor(n/size) lines of that file
-    VertexID leftover_vertices = number_of_global_vertices % size;
-    VertexID number_of_local_vertices = (number_of_global_vertices / size)
-      + static_cast<VertexID>(rank < leftover_vertices);
-    VertexID from = (rank * number_of_local_vertices)
-      + static_cast<VertexID>(rank >= leftover_vertices ? leftover_vertices : 0);
-    VertexID to = from + number_of_local_vertices - 1;
-
-    std::vector<std::pair<VertexID, VertexID>> edge_list;
+    std::vector<std::pair<VertexID, VertexID>> edge_list = result.TakeEdges();
     google::dense_hash_set<VertexID> ghost_vertices; 
     ghost_vertices.set_empty_key(EmptyKey);
     ghost_vertices.set_deleted_key(DeleteKey);
+    for (auto const& [u, v] : edge_list) {
+        if (v < from || v >= to) {
+            ghost_vertices.insert(v);
+        }
+    }
 
-    ParseVertexFilestream(in, from, to, ghost_vertices, edge_list);
 
     if constexpr (std::is_same<GraphType, StaticGraphCommunicator>::value
                   || std::is_same<GraphType, StaticGraph>::value) {
@@ -355,7 +355,7 @@ class GraphIO {
     }
 
     std::vector<std::pair<VertexID, VertexID>> vertex_dist(size);
-    GatherPERanges(from, to, comm, vertex_dist);
+    GatherPERanges(from, to - 1, comm, vertex_dist);
 
     // Initialize ghost vertices
     for (auto &v : ghost_vertices) {
