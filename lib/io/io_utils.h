@@ -48,10 +48,10 @@ class IOUtility {
     } else if (config.gen != "null") {
       // Generator I/O
       kagen::KaGen gen(comm);
+      gen.EnableBasicStatistics();
       kagen::EdgeList edge_list;
-      GenerateSyntheticGraph(gen, config, edge_list);
-      GraphIO::ReadMETISGenerator<GraphType>(g, config, rank, size, MPI_COMM_WORLD, edge_list);
-      edge_list.clear();
+      auto result = GenerateSyntheticGraph(gen, config);
+      GraphIO::ReadMETISGenerator<GraphType>(g, config, rank, size, MPI_COMM_WORLD, result);
     } else {
       std::cout << "I/O type not supported" << std::endl;
       MPI_Finalize();
@@ -59,30 +59,27 @@ class IOUtility {
     }
   }
 
-  static void GenerateSyntheticGraph(kagen::KaGen &gen,
-                                     Config &config,
-                                     kagen::EdgeList &edge_list) {
+  static kagen::KaGenResult GenerateSyntheticGraph(kagen::KaGen &gen,
+                                     Config &config) {
       gen.SetSeed(config.seed);
       if (config.gen == "gnm_undirected")
-          edge_list = gen.GenerateUndirectedGNM(config.gen_n, config.gen_m).TakeEdges();
+          return gen.GenerateUndirectedGNM(config.gen_n, config.gen_m);
       else if (config.gen == "rdg_2d")
-          edge_list = gen.GenerateRDG2D(config.gen_n, config.gen_periodic).TakeEdges();
+          return gen.GenerateRDG2D(config.gen_n, config.gen_periodic);
       else if (config.gen == "rdg_3d")
-          edge_list = gen.GenerateRDG3D(config.gen_n).TakeEdges();
+          return gen.GenerateRDG3D(config.gen_n);
       else if (config.gen == "rgg_2d")
-          edge_list = gen.GenerateRGG2D(config.gen_n, config.gen_r).TakeEdges();
+          return gen.GenerateRGG2D(config.gen_n, config.gen_r);
       else if (config.gen == "rgg_3d")
-          edge_list = gen.GenerateRGG3D(config.gen_n, config.gen_r).TakeEdges();
+          return gen.GenerateRGG3D(config.gen_n, config.gen_r);
       else if (config.gen == "rhg")
-          edge_list = gen.GenerateRHG(config.gen_n, config.gen_gamma, config.gen_d).TakeEdges();
+          return gen.GenerateRHG(config.gen_gamma, config.gen_n, config.gen_d);
       else if (config.gen == "ba")
-          edge_list = gen.GenerateBA(config.gen_n, config.gen_d).TakeEdges();
+          return gen.GenerateBA(config.gen_n, config.gen_d);
       else if (config.gen == "grid_2d")
-          edge_list = gen.GenerateGrid2D(config.gen_n, config.gen_m, config.gen_p, config.gen_periodic).TakeEdges();
+          return gen.GenerateGrid2D(config.gen_n, config.gen_m, config.gen_p, config.gen_periodic);
       else {
-        std::cout << "Generator not supported" << std::endl;
-        MPI_Finalize();
-        exit(1);
+        throw "Generator not supported";
       }
   }
 

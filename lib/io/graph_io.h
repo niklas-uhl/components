@@ -71,11 +71,14 @@ class GraphIO {
   static void ReadMETISGenerator(GraphType &g,
                                  Config &config, 
                                  PEID rank, PEID size, const MPI_Comm &comm,
-                                 std::vector<std::pair<VertexID, VertexID>> &edge_list) {
+                                 kagen::KaGenResult &result) {
     // Gather local edge lists (transpose)
-    VertexID from = edge_list[0].first, to = edge_list[0].second;
+      
+    VertexID from = result.vertex_range.first;
+    VertexID to = result.vertex_range.second - 1;
+    auto edge_list = result.TakeEdges();
     VertexID number_of_local_vertices = to - from + 1;
-    edge_list.erase(begin(edge_list));
+    //edge_list.erase(begin(edge_list));
     VertexID number_of_edges = edge_list.size();
 
     // Count ghost vertices
@@ -294,6 +297,7 @@ class GraphIO {
       exit(0);
     }
     kagen::KaGen gen(comm);
+    gen.EnableBasicStatistics();
     auto result =
         gen.ReadFromFile(filename, kagen::StaticGraphFormat::METIS,
                          kagen::StaticGraphDistribution::BALANCE_VERTICES);
