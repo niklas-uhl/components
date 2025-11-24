@@ -32,8 +32,8 @@ include(FetchContent)
 set(IPS4O_DISABLE_PARALLEL ON CACHE BOOL "Disable shared memory parallelism of IPS4o")
 FetchContent_Declare(
   ips4o
-  GIT_REPOSITORY https://github.com/ips4o/ips4o
-  GIT_TAG 08a5b92
+  GIT_REPOSITORY https://github.com/niklas-uhl/ips4o
+  GIT_TAG fix/non-parallel-mode
   SYSTEM
   EXCLUDE_FROM_ALL
 )
