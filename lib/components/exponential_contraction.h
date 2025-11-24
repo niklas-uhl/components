@@ -34,6 +34,7 @@
 #include "utils.h"
 #include "comm_utils.h"
 #include "all_reduce.h"
+#include "io_utils.h"
 
 class ExponentialContraction {
  public:

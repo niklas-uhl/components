@@ -30,8 +30,11 @@
 #include "definitions.h"
 #include "comm_utils.h"
 #include "dynamic_graph_comm.h"
+#include "static_graph_comm.h"
+#include "semidynamic_graph_comm.h"
 #include "static_graph.h"
 #include "edge_hash.h"
+#include <ips4o.hpp>
 
 
 template <typename GraphType, typename LabelType = std::vector<VertexID>>
