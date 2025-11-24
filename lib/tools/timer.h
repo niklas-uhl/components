@@ -20,11 +20,11 @@
  *****************************************************************************/
 
 #ifndef _TIMER_H_
+
 #define _TIMER_H_
 
-#include <sys/resource.h>
-#include <sys/time.h>
-#include <unistd.h>
+#include <mpi.h>
+
 
 class Timer {
  public:

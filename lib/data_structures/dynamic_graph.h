@@ -537,12 +537,12 @@ class DynamicGraph {
   }
 
   // Local IDs
-  bool IsConnected(VertexID from, VertexID to) {
-    ForallNeighbors(from, [&](VertexID v) {
-        if (v == to) return true; 
-    });
-    return false;
-  }
+  // bool IsConnected(VertexID from, VertexID to) {
+  //   ForallNeighbors(from, [&](VertexID v) {
+  //       if (v == to) return true; 
+  //   });
+  //   return false;
+  // }
 
   inline VertexID GetVertexDegree(const VertexID v) const {
     return IsLocal(v) ? local_adjacent_edges_[v].size()
@@ -585,20 +585,20 @@ class DynamicGraph {
   //////////////////////////////////////////////
   // I/O
   //////////////////////////////////////////////
-  bool CheckDuplicates() {
-    // google::dense_hash_set<VertexID> neighbors;
-    ForallLocalVertices([&](const VertexID v) {
-      std::unordered_set<VertexID> neighbors;
-      ForallNeighbors(v, [&](const VertexID w) {
-        if (neighbors.find(w) != end(neighbors)) {
-          std::cout << "[R" << rank_ << ":0] DUPL (" << GetGlobalID(v) << "," << GetGlobalID(w) << "[" << GetPE(w) << "])" << std::endl;
-          return true;
-        }
-        neighbors.insert(w);
-      });
-    });
-    return false;
-  }
+  // bool CheckDuplicates() {
+  //   // google::dense_hash_set<VertexID> neighbors;
+  //   ForallLocalVertices([&](const VertexID v) {
+  //     std::unordered_set<VertexID> neighbors;
+  //     ForallNeighbors(v, [&](const VertexID w) {
+  //       if (neighbors.find(w) != end(neighbors)) {
+  //         std::cout << "[R" << rank_ << ":0] DUPL (" << GetGlobalID(v) << "," << GetGlobalID(w) << "[" << GetPE(w) << "])" << std::endl;
+  //         return true;
+  //       }
+  //       neighbors.insert(w);
+  //     });
+  //   });
+  //   return false;
+  // }
 
   void OutputLocal() {
     ForallLocalVertices([&](const VertexID v) {

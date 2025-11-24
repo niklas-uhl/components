@@ -31,7 +31,7 @@
 #include <vector>
 
 #include "ips4o.hpp"
-#include "connect_io.h"
+// #include "connect_io.h"
 #include "config.h"
 #include "kagen.h"
 #include "kagen/tools/statistics.h"
@@ -71,7 +71,7 @@ class GraphIO {
   static void ReadMETISGenerator(GraphType &g,
                                  Config &config, 
                                  PEID rank, PEID size, const MPI_Comm &comm,
-                                 kagen::KaGenResult &result) {
+                                 kagen::Graph &result) {
     // Gather local edge lists (transpose)
       
     VertexID from = result.vertex_range.first;
@@ -299,8 +299,8 @@ class GraphIO {
     kagen::KaGen gen(comm);
     gen.EnableBasicStatistics();
     auto result =
-        gen.ReadFromFile(filename, kagen::StaticGraphFormat::METIS,
-                         kagen::StaticGraphDistribution::BALANCE_VERTICES);
+        gen.ReadFromFile(filename, kagen::FileFormat::METIS,
+                         kagen::GraphDistribution::BALANCE_VERTICES);
 
     VertexID from = result.vertex_range.first;
     VertexID to = result.vertex_range.second;

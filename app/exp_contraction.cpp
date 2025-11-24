@@ -26,12 +26,10 @@
 #include "io/io_utils.h"
 #include "parse_parameters.h"
 #include "timer.h"
-#include <backward.hpp>
 
 #include "components/exponential_contraction.h"
 
 int main(int argn, char **argv) {
-  backward::SignalHandling sh;
   // Init MPI
   MPI_Init(&argn, &argv);
   PEID rank, size;

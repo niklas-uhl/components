@@ -49,7 +49,7 @@ class IOUtility {
       // Generator I/O
       kagen::KaGen gen(comm);
       gen.EnableBasicStatistics();
-      kagen::EdgeList edge_list;
+      kagen::Edgelist edge_list;
       auto result = GenerateSyntheticGraph(gen, config);
       GraphIO::ReadMETISGenerator<GraphType>(g, config, rank, size, MPI_COMM_WORLD, result);
     } else {
@@ -59,7 +59,7 @@ class IOUtility {
     }
   }
 
-  static kagen::KaGenResult GenerateSyntheticGraph(kagen::KaGen &gen,
+  static kagen::Graph GenerateSyntheticGraph(kagen::KaGen &gen,
                                      Config &config) {
       gen.SetSeed(config.seed);
       if (config.gen == "gnm_undirected")

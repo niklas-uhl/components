@@ -23,9 +23,7 @@
 
 #include <iostream>
 
-#include <experimental/random>
-#include <tlx/define.hpp>
-#include <tlx/math.hpp>
+#include <random>
 
 #include "config.h"
 #include "definitions.h"

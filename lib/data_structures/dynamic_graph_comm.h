@@ -45,9 +45,10 @@
 #include "config.h"
 #include "timer.h"
 #include "payload.h"
+#include "vertex_comm.h"
 
-template<typename GraphType> 
-class VertexCommunicator;
+// template<typename GraphType> 
+// class VertexCommunicator;
 
 class DynamicGraphCommunicator : public DynamicGraph {
  public:

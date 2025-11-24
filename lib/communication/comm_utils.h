@@ -23,6 +23,11 @@
 #define _COMM_UTILITY_H_
 
 #include "definitions.h"
+#include <google/dense_hash_map>
+#include "timer.h"
+#include <iostream>
+
+#include <mpi.h>
 
 class CommunicationUtility {
  public:
