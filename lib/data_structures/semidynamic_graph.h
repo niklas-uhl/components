@@ -35,7 +35,6 @@
 #include <deque>
 #include <tuple>
 #include <unordered_set>
-#include <boost/functional/hash.hpp>
 #include <google/sparse_hash_set>
 #include <google/dense_hash_set>
 #include <google/sparse_hash_map>
