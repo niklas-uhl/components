@@ -25,16 +25,16 @@
 
 #include <random>
 
-#include "config.h"
+#include "kacomp/config.h"
 #include "definitions.h"
-#include "static_graph.h"
-#include "dynamic_graph_comm.h"
-#include "cag_builder.h"
-#include "dynamic_contraction.h"
+#include "kacomp/data_structures/static_graph.h"
+#include "kacomp/data_structures/dynamic_graph_comm.h"
+#include "kacomp/contraction/cag_builder.h"
+#include "kacomp/contraction/dynamic_contraction.h"
 #include "utils.h"
-#include "comm_utils.h"
+#include "kacomp/communication/comm_utils.h"
 #include "all_reduce.h"
-#include "io_utils.h"
+#include "kacomp/io/io_utils.h"
 
 class ExponentialContraction {
  public:

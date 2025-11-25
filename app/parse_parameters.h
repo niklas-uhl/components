@@ -22,8 +22,8 @@
 #ifndef _PARSE_PARAMETERS_H_
 #define _PARSE_PARAMETERS_H_
 
-#include "config.h"
-#include "tools/arg_parser.h"
+#include "kacomp/config.h"
+#include "kacomp/tools/arg_parser.h"
 
 #include "definitions.h"
 

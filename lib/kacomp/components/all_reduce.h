@@ -26,9 +26,9 @@
 #include <random>
 #include <set>
 
-#include "config.h"
+#include "kacomp/config.h"
 #include "definitions.h"
-#include "graph_io.h"
+#include "kacomp/io/graph_io.h"
 #include "utils.h"
 
 template <typename GraphType>

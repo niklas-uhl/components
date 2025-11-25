@@ -26,13 +26,13 @@
 #include <google/sparse_hash_set>
 #include <google/dense_hash_set>
 
-#include "config.h"
+#include "kacomp/config.h"
 #include "definitions.h"
-#include "comm_utils.h"
-#include "dynamic_graph_comm.h"
-#include "static_graph_comm.h"
-#include "semidynamic_graph_comm.h"
-#include "static_graph.h"
+#include "kacomp/communication/comm_utils.h"
+#include "kacomp/data_structures/dynamic_graph_comm.h"
+#include "kacomp/data_structures/static_graph_comm.h"
+#include "kacomp/data_structures/semidynamic_graph_comm.h"
+#include "kacomp/data_structures/static_graph.h"
 #include "edge_hash.h"
 #include <ips4o.hpp>
 

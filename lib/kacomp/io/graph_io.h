@@ -32,17 +32,17 @@
 
 #include "ips4o.hpp"
 // #include "connect_io.h"
-#include "config.h"
+#include "kacomp/config.h"
 #include "kagen.h"
 #include "kagen/tools/statistics.h"
-#include "utils.h"
-#include "comm_utils.h"
-#include "dynamic_graph.h"
-#include "dynamic_graph_comm.h"
-#include "semidynamic_graph.h"
-#include "semidynamic_graph_comm.h"
-#include "static_graph.h"
-#include "static_graph_comm.h"
+#include "kacomp/components/utils.h"
+#include "kacomp/communication/comm_utils.h"
+#include "kacomp/data_structures/dynamic_graph.h"
+#include "kacomp/data_structures/dynamic_graph_comm.h"
+#include "kacomp/data_structures/semidynamic_graph.h"
+#include "kacomp/data_structures/semidynamic_graph_comm.h"
+#include "kacomp/data_structures/static_graph.h"
+#include "kacomp/data_structures/static_graph_comm.h"
 
 typedef struct {
   VertexID first_vertex, rank;

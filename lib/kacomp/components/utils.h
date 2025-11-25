@@ -27,10 +27,10 @@
 #include <sys/sysinfo.h>
 #endif
 
-#include "dynamic_graph_comm.h"
-#include "semidynamic_graph.h"
-#include "static_graph.h"
-#include "static_graph_comm.h"
+#include "kacomp/data_structures/dynamic_graph_comm.h"
+#include "kacomp/data_structures/semidynamic_graph.h"
+#include "kacomp/data_structures/static_graph.h"
+#include "kacomp/data_structures/static_graph_comm.h"
 
 class Utility {
  public:

@@ -22,9 +22,9 @@
 #ifndef _IO_UTILITY_H_
 #define _IO_UTILITY_H_
 
-#include "config.h"
+#include "kacomp/config.h"
 #include "definitions.h"
-#include "io/graph_io.h"
+#include "kacomp/io/graph_io.h"
 #include <kagen.h>
 
 class IOUtility {

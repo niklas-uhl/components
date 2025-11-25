@@ -2,7 +2,7 @@
 #include <sstream>
 
 #include "dynamic_graph_comm.h"
-#include "vertex_comm.h"
+#include "kacomp/communication/vertex_comm.h"
   
 DynamicGraphCommunicator::DynamicGraphCommunicator(const Config& conf, const PEID rank, const PEID size) 
     : DynamicGraph(conf, rank, size), 

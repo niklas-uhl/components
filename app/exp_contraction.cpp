@@ -21,13 +21,13 @@
 
 #include <mpi.h>
 
-#include "config.h"
-#include "benchmark.h"
-#include "io/io_utils.h"
+#include "kacomp/config.h"
+#include "kacomp/tools/benchmark.h"
+#include "kacomp/io/io_utils.h"
 #include "parse_parameters.h"
-#include "timer.h"
+#include "kacomp/tools/timer.h"
 
-#include "components/exponential_contraction.h"
+#include "kacomp/components/exponential_contraction.h"
 
 int main(int argn, char **argv) {
   // Init MPI

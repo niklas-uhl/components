@@ -25,10 +25,10 @@
 #include <iostream>
 #include <google/sparse_hash_set>
 
-#include "config.h"
+#include "kacomp/config.h"
 #include "definitions.h"
-#include "dynamic_graph_comm.h"
-#include "static_graph.h"
+#include "kacomp/data_structures/dynamic_graph_comm.h"
+#include "kacomp/data_structures/static_graph.h"
 #include "edge_hash.h"
 
 class DynamicContraction {

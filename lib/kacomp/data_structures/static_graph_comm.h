@@ -41,10 +41,10 @@
 #include <google/dense_hash_map>
 
 #include "static_graph.h"
-#include "config.h"
-#include "timer.h"
-#include "payload.h"
-#include "vertex_comm.h"
+#include "kacomp/config.h"
+#include "kacomp/tools/timer.h"
+#include "kacomp/communication/payload.h"
+#include "kacomp/communication/vertex_comm.h"
 
 // template<typename GraphType> 
 // class VertexCommunicator;

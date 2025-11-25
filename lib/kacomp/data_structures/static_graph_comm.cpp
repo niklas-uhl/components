@@ -2,7 +2,7 @@
 #include <sstream>
 
 #include "static_graph_comm.h"
-#include "vertex_comm.h"
+#include "kacomp/communication/vertex_comm.h"
   
 StaticGraphCommunicator::StaticGraphCommunicator(const Config& conf, const PEID rank, const PEID size) 
     : StaticGraph(conf, rank, size),

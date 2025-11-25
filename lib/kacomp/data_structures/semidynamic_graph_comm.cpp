@@ -2,7 +2,7 @@
 #include <sstream>
 
 #include "semidynamic_graph_comm.h"
-#include "vertex_comm.h"
+#include "kacomp/communication/vertex_comm.h"
   
 SemidynamicGraphCommunicator::SemidynamicGraphCommunicator(const Config& conf, const PEID rank, const PEID size) 
     : SemidynamicGraph(conf, rank, size),

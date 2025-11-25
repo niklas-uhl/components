@@ -19,8 +19,8 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  *****************************************************************************/
 
-#ifndef _SEMIDYNAMIC_GRAPH_H_
-#define _SEMIDYNAMIC_GRAPH_H_
+#ifndef _STATIC_GRAPH_H_
+#define _STATIC_GRAPH_H_
 
 #include <mpi.h>
 
@@ -40,12 +40,14 @@
 #include <google/sparse_hash_map>
 #include <google/dense_hash_map>
 
-#include "config.h"
-#include "timer.h"
+#include "kacomp/config.h"
+#include "kacomp/tools/timer.h"
 
-class SemidynamicGraph {
+
+class StaticGraph {
+
  public:
-  SemidynamicGraph(const Config& conf, const PEID rank, const PEID size)
+  StaticGraph(const Config& conf, const PEID rank, const PEID size)
     : rank_(rank),
       size_(size),
       config_(conf),
@@ -58,15 +60,15 @@ class SemidynamicGraph {
       local_offset_(0),
       ghost_offset_(0),
       vertex_counter_(0),
+      original_duplicate_id_(std::numeric_limits<VertexID>::max()),
+      local_duplicate_id_(std::numeric_limits<VertexID>::max()),
+      global_duplicate_id_(std::numeric_limits<VertexID>::max()),
       edge_counter_(0),
-      local_duplicate_id_(0),
-      global_duplicate_id_(0),
       ghost_counter_(0),
+      last_source_(0),
       comm_time_(0.0),
       send_volume_(0),
       recv_volume_(0) {
-    label_shortcut_.set_empty_key(EmptyKey);
-    label_shortcut_.set_deleted_key(DeleteKey);
     global_to_local_map_.set_empty_key(EmptyKey);
     global_to_local_map_.set_deleted_key(DeleteKey);
     // duplicates_.set_empty_key(EmptyKey);
@@ -74,25 +76,33 @@ class SemidynamicGraph {
     adjacent_pes_.set_deleted_key(DeleteKey);
   }
 
-  virtual ~SemidynamicGraph() {};
+  virtual ~StaticGraph() {};
 
   //////////////////////////////////////////////
   // Graph construction
   //////////////////////////////////////////////
-  void StartConstruct(VertexID local_n, VertexID ghost_n, VertexID local_offset) {
+  void StartConstruct(const VertexID local_n, 
+                      const VertexID ghost_n, 
+                      const VertexID total_m,
+                      const VertexID local_offset) {
     number_of_local_vertices_ = local_n;
     number_of_vertices_ = local_n + ghost_n;
+    number_of_edges_ = total_m;
 
     // Overallocate
     if (config_.overallocate) {
-      adjacent_edges_.reserve(1.2 * number_of_vertices_);
+      vertices_.reserve(1.2 * number_of_vertices_);
+      edges_.reserve(1.2 * number_of_edges_);
       local_vertices_data_.reserve(1.2 * local_n);
       ghost_vertices_data_.reserve(1.2 * ghost_n);
-      parent_.reserve(1.2 * local_n);
       is_active_.reserve(1.2 * number_of_vertices_);
     }
+    
+    vertices_.resize(number_of_vertices_ + 1);
+    // Fix first node being isolated
+    if (local_n > 0) vertices_[0].first_edge_ = 0;
+    edges_.resize(number_of_edges_);
 
-    adjacent_edges_.resize(number_of_vertices_);
     local_vertices_data_.resize(local_n);
     ghost_vertices_data_.resize(ghost_n);
 
@@ -100,13 +110,27 @@ class SemidynamicGraph {
     ghost_offset_ = local_n;
 
     // Temp counter for properly counting new ghost vertices
+    vertex_counter_ = local_n;
     ghost_counter_ = local_n;
 
-    parent_.resize(local_n);
     is_active_.resize(number_of_vertices_, true);
   }
 
-  void FinishConstruct() { number_of_edges_ = edge_counter_; }
+  void FinishConstruct() { 
+    vertices_.resize(vertex_counter_ + 1);
+    edges_.resize(edge_counter_ + 1);
+
+    number_of_vertices_ = vertex_counter_;
+    // std::cout << "R" << rank_ << " finish construct vc " << vertex_counter_ << " gc " << ghost_counter_ << std::endl;;
+    number_of_local_vertices_ = vertex_counter_ - (ghost_counter_ - ghost_offset_);
+    // std::cout << "R" << rank_ << " final nc " << number_of_local_vertices_ << std::endl;
+    number_of_edges_ = edge_counter_;
+    for (VertexID v = 1; v <= vertex_counter_; v++) {
+      if (vertices_[v].first_edge_ == std::numeric_limits<EdgeID>::max()) {
+        vertices_[v].first_edge_ = vertices_[v - 1].first_edge_;
+      }
+    }
+  }
 
   //////////////////////////////////////////////
   // Graph iterators
@@ -133,12 +157,14 @@ class SemidynamicGraph {
 
   template<typename F>
   void ForallNeighbors(const VertexID v, F &&callback) {
-    ForallAdjacentEdges(v, [&](EdgeID e) { callback(adjacent_edges_[v][e].target_); });
+    ForallAdjacentEdges(v, [&](EdgeID e) { 
+        callback(edges_[e].target_); 
+    });
   }
 
   template<typename F>
   void ForallAdjacentEdges(const VertexID v, F &&callback) {
-    for (EdgeID e = 0; e < GetVertexDegree(v); ++e) {
+    for (EdgeID e = GetFirstEdge(v); e < GetFirstInvalidEdge(v); ++e) {
       callback(e);
     }
   }
@@ -176,7 +202,7 @@ class SemidynamicGraph {
   // Graph contraction
   //////////////////////////////////////////////
   inline void AllocateContractionVertices() {
-    contraction_vertices_.resize(GetNumberOfVertices());
+    contraction_vertices_.resize(vertices_.size());
   }
 
   inline void SetContractionVertex(VertexID v, VertexID cv) {
@@ -196,7 +222,7 @@ class SemidynamicGraph {
 
   inline bool IsLocalFromGlobal(VertexID v) const {
     return v == global_duplicate_id_ 
-            || (local_offset_ <= v && v < local_offset_ + GetLocalVertexVectorSize());
+            || (v != original_duplicate_id_ && local_offset_ <= v && v < local_offset_ + GetLocalVertexVectorSize());
   }
 
   inline bool IsGhost(VertexID v) const {
@@ -219,7 +245,8 @@ class SemidynamicGraph {
 
   inline VertexID GetLocalID(VertexID v) const {
     if (IsLocalFromGlobal(v)) {
-      if (global_duplicate_id_ == v) {
+      if (global_duplicate_id_ < std::numeric_limits<VertexID>::max() 
+          && global_duplicate_id_ == v) {
         return local_duplicate_id_;
       } else {
         return v - local_offset_;
@@ -231,7 +258,8 @@ class SemidynamicGraph {
 
   inline VertexID GetGlobalID(VertexID v) const {
     if (IsLocal(v)) {
-      if (local_duplicate_id_ == v) {
+      if (local_duplicate_id_ < std::numeric_limits<VertexID>::max()
+          && local_duplicate_id_ == v) {
         return global_duplicate_id_;
       } else {
         return v + local_offset_;
@@ -244,7 +272,10 @@ class SemidynamicGraph {
   inline PEID GetPE(VertexID v) const {
     return IsLocal(v) ? rank_
                       : ghost_vertices_data_[v - ghost_offset_].rank_;
+  }
 
+  inline std::pair<VertexID, VertexID> GetDuplicate() {
+    return std::make_pair(global_duplicate_id_, local_duplicate_id_);
   }
 
   //////////////////////////////////////////////
@@ -257,9 +288,7 @@ class SemidynamicGraph {
 
   inline VertexID GetNumberOfGlobalEdges() const { return number_of_global_edges_; }
 
-  inline VertexID GetLocalOffset() const {
-    return local_offset_;
-  }
+  inline VertexID GetLocalOffset() const { return local_offset_; }
 
   inline VertexID GetNumberOfLocalVertices() const { return number_of_local_vertices_; }
   inline VertexID GetLocalVertexVectorSize() const { return local_vertices_data_.size(); }
@@ -273,6 +302,14 @@ class SemidynamicGraph {
 
   inline void ResetNumberOfCutEdges() { number_of_cut_edges_ = 0; }
 
+  inline EdgeID GetFirstEdge(const VertexID v) const {
+    return vertices_[v].first_edge_;
+  }
+
+  inline EdgeID GetFirstInvalidEdge(const VertexID v) const {
+    return vertices_[v + 1].first_edge_;
+  }
+
   VertexID GatherNumberOfGlobalVertices(bool force=true) {
     if (number_of_global_vertices_ == 0 || force) {
       number_of_global_vertices_ = 0;
@@ -280,8 +317,9 @@ class SemidynamicGraph {
       VertexID local_vertices = 0;
       ForallLocalVertices([&](const VertexID v) { local_vertices++; });
       if (local_vertices != number_of_local_vertices_) {
-        std::cout << "This shouldn't happen (different number of vertices local=" << local_vertices << ", counter=" << number_of_local_vertices_ << ", datasize=" << GetLocalVertexVectorSize() << ")" << std::endl;
-        exit(1);
+        std::stringstream out;
+        out << "This shouldn't happen (different number of vertices local=" << local_vertices << ", counter=" << number_of_local_vertices_ << ", datasize=" << GetLocalVertexVectorSize() << ")";
+        throw std::runtime_error(out.str());
       }
 #endif
       // Check if all PEs are done
@@ -300,16 +338,18 @@ class SemidynamicGraph {
   VertexID GatherNumberOfGlobalEdges(bool force=true) {
     if (number_of_global_edges_ == 0 || force) {
       number_of_global_edges_ = 0;
-// #ifndef NDEBUG
-//       VertexID local_edges = 0;
-//       ForallVertices([&](const VertexID v) { 
-//           ForallNeighbors(v, [&](const VertexID w) { local_edges++; });
-//       });
-//       if (local_edges != number_of_edges_) {
-//         std::cout << "This shouldn't happen (different number of edges local=" << local_edges << ", counter=" << number_of_edges_ << ")" << std::endl;
-//         exit(1);
-//       }
-// #endif
+ #ifndef NDEBUG
+       VertexID local_edges = 0;
+       ForallVertices([&](const VertexID v) { 
+           ForallNeighbors(v, [&](const VertexID w) { local_edges++; });
+       });
+       if (local_edges != number_of_edges_) {
+         std::stringstream out;
+         out << "This shouldn't happen (different number of edges local="
+             << local_edges << ", counter=" << number_of_edges_ << ")";
+         throw std::runtime_error(out.str());
+       }
+ #endif
       // Check if all PEs are done
       comm_timer_.Restart();
       MPI_Allreduce(&number_of_edges_,
@@ -324,24 +364,15 @@ class SemidynamicGraph {
     return number_of_global_edges_;
   }
 
-  void SetParent(const VertexID v, const VertexID parent_v) {
-    parent_[v] = parent_v;
-  }
-
-  inline VertexID GetParent(const VertexID v) {
-    return parent_[v];
-  }
-
   inline VertexID AddVertex() { return vertex_counter_++; }
 
-  VertexID AddGhostVertex(VertexID v, PEID pe) {
+  inline VertexID AddGhostVertex(VertexID v, PEID pe) {
     global_to_local_map_[v] = ghost_counter_;
 
-    // Fix overflows
     if (vertex_counter_ >= is_active_.size()) {
       is_active_.resize(vertex_counter_ + 1);
     }
-    if (ghost_counter_ - ghost_offset_ >= ghost_vertices_data_.size()) {
+    if (ghost_counter_ - ghost_offset_ >= GetGhostVertexVectorSize()) {
       ghost_vertices_data_.resize(ghost_counter_ - ghost_offset_ + 1);
     }
 
@@ -354,10 +385,12 @@ class SemidynamicGraph {
     return ghost_counter_++;
   }
 
-  // TODO: Not sure if this works
-  inline void AddDuplicateVertex(VertexID global_id) {
+  inline void AddDuplicateVertex(VertexID original_id, VertexID global_id) {
+    // "Remap" duplicate
+    original_duplicate_id_ = original_id;
     local_duplicate_id_ = 0;
     global_duplicate_id_ = global_id;
+    // std::cout << "R" << rank_ << " insert duplicate orig=" << original_id << " gid=" << global_duplicate_id_ << " lid=" << local_duplicate_id_ << std::endl;
   }
 
   EdgeID AddEdge(VertexID from, VertexID to, PEID rank) {
@@ -371,60 +404,36 @@ class SemidynamicGraph {
       if (IsGhostFromGlobal(to)) { // true if ghost already in map, otherwise false
         local_vertices_data_[from].is_interface_vertex_ = true;
         number_of_cut_edges_++;
-        AddGhostEdge(from, to);
+        AddLocalEdge(from, to);
         SetAdjacentPE(rank, true);
       } else {
-        //std::cout << "This shouldn't happen" << std::endl;
         throw "This shouldn't happen";
       }
 #else 
       local_vertices_data_[from].is_interface_vertex_ = true;
       number_of_cut_edges_++;
-      AddGhostEdge(from, to);
+      AddLocalEdge(from, to);
       SetAdjacentPE(rank, true);
 #endif
     }
-    edge_counter_++;
+    if (from > last_source_) last_source_ = from;
     return edge_counter_;
   }
 
   void AddLocalEdge(VertexID from, VertexID to) {
-    if (from >= adjacent_edges_.size()) {
-      adjacent_edges_.resize(from + 1);
+    if (edge_counter_ >= edges_.size()) {
+      edges_.resize(edge_counter_ + 1);
     }
-    adjacent_edges_[from].emplace_back(to - local_offset_);
-  }
-
-  void AddGhostEdge(VertexID from, VertexID to) {
-    if (from >= adjacent_edges_.size()) {
-      adjacent_edges_.resize(from + 1);
+    edges_[edge_counter_].target_ = GetLocalID(to);
+    edge_counter_++;
+    if (from + 1 >= vertices_.size()) {
+      vertices_.resize(from + 2);
     }
-    adjacent_edges_[from].emplace_back(global_to_local_map_[to]);
+    vertices_[from + 1].first_edge_ = edge_counter_;
   }
-
-
-  void ReserveEdgesForVertex(VertexID v, VertexID num_edges) {
-    adjacent_edges_[v].reserve(num_edges);
-  }
-
-  void RemoveAllEdges(VertexID from) {
-    ForallNeighbors(from, [&](const VertexID w) {
-      if (IsGhost(w)) number_of_cut_edges_--;
-      number_of_edges_--;
-    });
-    adjacent_edges_[from].clear();
-  }
-
-  // Local IDs
-  // bool IsConnected(VertexID from, VertexID to) {
-  //   ForallNeighbors(from, [&](VertexID v) {
-  //       if (v == to) return true; 
-  //   });
-  //   return false;
-  // }
 
   inline VertexID GetVertexDegree(const VertexID v) const {
-    return adjacent_edges_[v].size();
+    return vertices_[v + 1].first_edge_ - vertices_[v].first_edge_; 
   }
 
   //////////////////////////////////////////////
@@ -459,25 +468,9 @@ class SemidynamicGraph {
   void ResetAdjacentPEs() {
     adjacent_pes_.clear();
   }
-
   //////////////////////////////////////////////
   // I/O
   //////////////////////////////////////////////
-  // bool CheckDuplicates() {
-  //   // google::dense_hash_set<VertexID> neighbors;
-  //   ForallLocalVertices([&](const VertexID v) {
-  //     std::unordered_set<VertexID> neighbors;
-  //     ForallNeighbors(v, [&](const VertexID w) {
-  //       if (neighbors.find(w) != end(neighbors)) {
-  //         std::cout << "[R" << rank_ << ":0] DUPL (" << GetGlobalID(v) << "," << GetGlobalID(w) << "[" << GetPE(w) << "])" << std::endl;
-  //         return true;
-  //       }
-  //       neighbors.insert(w);
-  //     });
-  //   });
-  //   return false;
-  // }
-
   void OutputLocal() {
     ForallLocalVertices([&](const VertexID v) {
       std::stringstream out;
@@ -492,6 +485,7 @@ class SemidynamicGraph {
       out << "[R" << rank_ << "] [N] "
           << GetGlobalID(v) << " -> ";
       ForallNeighbors(v, [&](VertexID u) {
+        // out << GetGlobalID(u) << " ";
         out << GetGlobalID(u) << " (local_id=" << u
             << ", pe=" << GetPE(u) << ") ";
       });
@@ -500,11 +494,7 @@ class SemidynamicGraph {
   }
 
   void OutputGhosts() {
-    PEID rank, size;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &size);
-
-    std::cout << "[R" << rank << "] [G] [ ";
+    std::cout << "[R" << rank_ << "] [G] [ ";
     for (auto &e : global_to_local_map_) {
       std::cout << e.first << " ";
     }
@@ -528,7 +518,6 @@ class SemidynamicGraph {
 
     // Gather component message
     std::vector<std::pair<VertexID, VertexID>> local_components;
-    // local_components.reserve(local_component_sizes.size());
     for(auto &kv : local_component_sizes)
       local_components.emplace_back(kv.first, kv.second);
     // [MEMORY]: Might be too small
@@ -588,16 +577,17 @@ class SemidynamicGraph {
         components.emplace_back(kv.first, kv.second);
       std::sort(begin(components), end(components));
 
-      // std::cout << "COMPONENTS [ ";
-      // for (auto &comp : components)
-      //   std::cout << "size=" << comp.first << " (num=" << comp.second << ") ";
-      // std::cout << "]" << std::endl;
+      std::cout << "COMPONENTS [ ";
+      for (auto &comp : components)
+        std::cout << "size=" << comp.first << " (num=" << comp.second << ") ";
+      std::cout << "]" << std::endl;
 
       VertexID total_num_no_isolated = 0;
       for (auto &comp : components)
         if (comp.first != 1) total_num_no_isolated += comp.second;
       std::cout << "NUM COMPONENTS " << total_num_no_isolated << std::endl;
     }
+
   }
 
   void Logging(bool active);
@@ -661,7 +651,6 @@ class SemidynamicGraph {
     explicit Edge(VertexID target) : target_(target) {}
   };
 
-
   // Network information
   PEID rank_, size_;
 
@@ -669,14 +658,11 @@ class SemidynamicGraph {
   Config config_;
 
   // Vertices and edges
-  std::vector<std::vector<Edge>> adjacent_edges_;
+  std::vector<Vertex> vertices_;
+  std::vector<Edge> edges_;
 
   std::vector<LocalVertexData> local_vertices_data_;
   std::vector<GhostVertexData> ghost_vertices_data_;
-
-  // Shortcutting
-  std::vector<VertexID> parent_;
-  google::dense_hash_map<VertexID, VertexID> label_shortcut_;
 
   VertexID number_of_vertices_;
   VertexID number_of_local_vertices_;
@@ -697,6 +683,7 @@ class SemidynamicGraph {
 
   // Duplicates
   // google::dense_hash_set<VertexID> duplicates_;
+  VertexID original_duplicate_id_;
   VertexID local_duplicate_id_;
   VertexID global_duplicate_id_;
 
@@ -705,8 +692,9 @@ class SemidynamicGraph {
 
   // Temporary counters
   VertexID vertex_counter_;
-  VertexID ghost_counter_;
   EdgeID edge_counter_;
+  VertexID ghost_counter_;
+  VertexID last_source_;
 
   // Statistics
   float comm_time_;

@@ -67,14 +67,14 @@ find_package(Sparsehash REQUIRED)
 
 
 set(KACOMP_INCLUDE_DIRS
-        "${CMAKE_CURRENT_LIST_DIR}/app/"
+        # "${CMAKE_CURRENT_LIST_DIR}/app/"
         "${CMAKE_CURRENT_LIST_DIR}/lib/"
-        "${CMAKE_CURRENT_LIST_DIR}/lib/communication/"
-        "${CMAKE_CURRENT_LIST_DIR}/lib/components/"
-        "${CMAKE_CURRENT_LIST_DIR}/lib/contraction/"
-        "${CMAKE_CURRENT_LIST_DIR}/lib/data_structures/"
-        "${CMAKE_CURRENT_LIST_DIR}/lib/io/"
-        "${CMAKE_CURRENT_LIST_DIR}/lib/tools/"
+        # "${CMAKE_CURRENT_LIST_DIR}/lib/communication/"
+        # "${CMAKE_CURRENT_LIST_DIR}/lib/components/"
+        # "${CMAKE_CURRENT_LIST_DIR}/lib/contraction/"
+        # "${CMAKE_CURRENT_LIST_DIR}/lib/data_structures/"
+        # "${CMAKE_CURRENT_LIST_DIR}/lib/io/"
+        # "${CMAKE_CURRENT_LIST_DIR}/lib/tools/"
           # extern/kagen/extlib/sampling/sampling
           # extern/kagen/include
           # extern/kagen/include/generators
@@ -95,13 +95,13 @@ set(KACOMP_SOURCES
           # app
           # lib
           # lib/communication
-          lib/communication/vertex_comm.cpp
+          lib/kacomp/communication/vertex_comm.cpp
           # lib/components
           # lib/contraction
           # lib/data_structures
-          lib/data_structures/dynamic_graph_comm.cpp
-          lib/data_structures/semidynamic_graph_comm.cpp
-          lib/data_structures/static_graph_comm.cpp
+          lib/kacomp/data_structures/dynamic_graph_comm.cpp
+          lib/kacomp/data_structures/semidynamic_graph_comm.cpp
+          lib/kacomp/data_structures/static_graph_comm.cpp
           # lib/io
           # lib/tools
 )

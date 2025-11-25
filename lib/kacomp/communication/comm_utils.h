@@ -22,9 +22,9 @@
 #ifndef _COMM_UTILITY_H_
 #define _COMM_UTILITY_H_
 
-#include "definitions.h"
+#include "kacomp/definitions.h"
 #include <google/dense_hash_map>
-#include "timer.h"
+#include "kacomp/tools/timer.h"
 #include <iostream>
 
 #include <mpi.h>

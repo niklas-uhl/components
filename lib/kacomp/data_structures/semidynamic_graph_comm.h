@@ -41,9 +41,9 @@
 #include <google/dense_hash_map>
 
 #include "semidynamic_graph.h"
-#include "config.h"
-#include "timer.h"
-#include "payload.h"
+#include "kacomp/config.h"
+#include "kacomp/tools/timer.h"
+#include "kacomp/communication/payload.h"
 
 template<typename GraphType> 
 class VertexCommunicator;

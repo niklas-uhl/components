@@ -19,8 +19,8 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  *****************************************************************************/
 
-#ifndef _DYNAMIC_GRAPH_H_
-#define _DYNAMIC_GRAPH_H_
+#ifndef _SEMIDYNAMIC_GRAPH_H_
+#define _SEMIDYNAMIC_GRAPH_H_
 
 #include <mpi.h>
 
@@ -40,12 +40,12 @@
 #include <google/sparse_hash_map>
 #include <google/dense_hash_map>
 
-#include "config.h"
-#include "timer.h"
+#include "kacomp/config.h"
+#include "kacomp/tools/timer.h"
 
-class DynamicGraph {
+class SemidynamicGraph {
  public:
-  DynamicGraph(const Config& conf, const PEID rank, const PEID size)
+  SemidynamicGraph(const Config& conf, const PEID rank, const PEID size)
     : rank_(rank),
       size_(size),
       config_(conf),
@@ -55,10 +55,13 @@ class DynamicGraph {
       number_of_edges_(0),
       number_of_cut_edges_(0),
       number_of_global_edges_(0),
-      vertex_counter_(0),
-      ghost_vertex_counter_(0),
-      edge_counter_(0),
+      local_offset_(0),
       ghost_offset_(0),
+      vertex_counter_(0),
+      edge_counter_(0),
+      local_duplicate_id_(0),
+      global_duplicate_id_(0),
+      ghost_counter_(0),
       comm_time_(0.0),
       send_volume_(0),
       recv_volume_(0) {
@@ -66,41 +69,41 @@ class DynamicGraph {
     label_shortcut_.set_deleted_key(DeleteKey);
     global_to_local_map_.set_empty_key(EmptyKey);
     global_to_local_map_.set_deleted_key(DeleteKey);
+    // duplicates_.set_empty_key(EmptyKey);
     adjacent_pes_.set_empty_key(EmptyKey);
     adjacent_pes_.set_deleted_key(DeleteKey);
   }
 
-  virtual ~DynamicGraph() {};
+  virtual ~SemidynamicGraph() {};
 
   //////////////////////////////////////////////
   // Graph construction
   //////////////////////////////////////////////
-  void StartConstruct(VertexID local_n, VertexID ghost_n, VertexID ghost_offset) {
-    ghost_offset_ = size_ * ghost_offset;
+  void StartConstruct(VertexID local_n, VertexID ghost_n, VertexID local_offset) {
+    number_of_local_vertices_ = local_n;
+    number_of_vertices_ = local_n + ghost_n;
 
     // Overallocate
     if (config_.overallocate) {
+      adjacent_edges_.reserve(1.2 * number_of_vertices_);
       local_vertices_data_.reserve(1.2 * local_n);
-      local_adjacent_edges_.reserve(1.2 * local_n);
-      local_parent_.reserve(1.2 * local_n);
-      local_active_.reserve(1.2 * local_n);
-
-      ghost_vertices_data_.reserve(1.2 * local_n);
-      ghost_adjacent_edges_.reserve(1.2 * local_n);
-      ghost_parent_.reserve(1.2 * local_n);
-      ghost_active_.reserve(1.2 * local_n);
+      ghost_vertices_data_.reserve(1.2 * ghost_n);
+      parent_.reserve(1.2 * local_n);
+      is_active_.reserve(1.2 * number_of_vertices_);
     }
 
+    adjacent_edges_.resize(number_of_vertices_);
     local_vertices_data_.resize(local_n);
-    local_adjacent_edges_.resize(local_n);
-    local_parent_.resize(local_n);
-    local_active_.resize(local_n);
+    ghost_vertices_data_.resize(ghost_n);
 
-    // Preallocate for ghosts (overallocate)
-    ghost_vertices_data_.resize(local_n);
-    ghost_adjacent_edges_.resize(local_n);
-    ghost_parent_.resize(local_n);
-    ghost_active_.resize(local_n);
+    local_offset_ = local_offset;
+    ghost_offset_ = local_n;
+
+    // Temp counter for properly counting new ghost vertices
+    ghost_counter_ = local_n;
+
+    parent_.resize(local_n);
+    is_active_.resize(number_of_vertices_, true);
   }
 
   void FinishConstruct() { number_of_edges_ = edge_counter_; }
@@ -130,15 +133,7 @@ class DynamicGraph {
 
   template<typename F>
   void ForallNeighbors(const VertexID v, F &&callback) {
-    if (IsLocal(v)) {
-      ForallAdjacentEdges(v, [&](EdgeID e) { 
-          callback(local_adjacent_edges_[v][e].target_); 
-      });
-    } else {
-      ForallAdjacentEdges(v, [&](EdgeID e) { 
-          callback(ghost_adjacent_edges_[v - ghost_offset_][e].target_); 
-      });
-    }
+    ForallAdjacentEdges(v, [&](EdgeID e) { callback(adjacent_edges_[v][e].target_); });
   }
 
   template<typename F>
@@ -156,37 +151,24 @@ class DynamicGraph {
     return adj;
   }
 
-  inline bool IsActive(const VertexID v) {
-    return IsLocal(v) ? local_active_[v]
-                      : ghost_active_[v - ghost_offset_];
+  inline bool IsActive(const VertexID v) const {
+    return is_active_[v];
   }
 
   void SetActive(VertexID v, bool is_active) {
-    if (IsLocal(v)) {
-      if (local_active_[v] && !is_active) {
-        number_of_vertices_--;
-        number_of_local_vertices_--;
-      } else if (!local_active_[v] && is_active) {
-        number_of_vertices_++;
-        number_of_local_vertices_++;
-      }
-      local_active_[v] = is_active;
-    } else {
-      if (ghost_active_[v - ghost_offset_] && !is_active) {
-        number_of_vertices_--;
-      } else if (!ghost_active_[v - ghost_offset_] && is_active) {
-        number_of_vertices_++;
-      }
-      ghost_active_[v - ghost_offset_] = is_active;
+    if (is_active_[v] && !is_active) {
+      number_of_local_vertices_ -= IsLocal(v);
+      number_of_vertices_--;
+    } else if (!is_active_[v] && is_active) {
+      number_of_local_vertices_ += IsLocal(v);
+      number_of_vertices_++;
     }
+    is_active_[v] = is_active;
   }
 
   void SetAllVerticesActive(bool is_active) {
-    for (VertexID v = 0; v < local_active_.size(); ++v) {
+    for (VertexID v = 0; v < is_active_.size(); ++v) {
       SetActive(v, is_active);
-    }
-    for (VertexID v = 0; v < ghost_active_.size(); ++v) {
-      SetActive(v + ghost_offset_, is_active);
     }
   }
 
@@ -194,82 +176,77 @@ class DynamicGraph {
   // Graph contraction
   //////////////////////////////////////////////
   inline void AllocateContractionVertices() {
-    local_contraction_vertices_.resize(GetLocalVertexVectorSize());
-    ghost_contraction_vertices_.resize(GetGhostVertexVectorSize());
+    contraction_vertices_.resize(GetNumberOfVertices());
   }
 
   inline void SetContractionVertex(VertexID v, VertexID cv) {
-    if (IsLocal(v)) local_contraction_vertices_[v] = cv;
-    else ghost_contraction_vertices_[v - ghost_offset_] = cv;
+    contraction_vertices_[v] = cv;
   }
 
-  inline VertexID GetContractionVertex(VertexID v) {
-    return IsLocal(v) ? local_contraction_vertices_[v]
-                      : ghost_contraction_vertices_[v - ghost_offset_];
+  inline VertexID GetContractionVertex(VertexID v) const {
+    return contraction_vertices_[v];
   }
-
 
   //////////////////////////////////////////////
   // Vertex mappings
   //////////////////////////////////////////////
   inline bool IsLocal(VertexID v) const {
-    return v < ghost_offset_;
+    return v < GetLocalVertexVectorSize();
   }
 
-  inline bool IsLocalFromGlobal(VertexID v) {
-    return global_to_local_map_.find(v) != global_to_local_map_.end() ? IsLocal(global_to_local_map_[v]) : false;
+  inline bool IsLocalFromGlobal(VertexID v) const {
+    return v == global_duplicate_id_ 
+            || (local_offset_ <= v && v < local_offset_ + GetLocalVertexVectorSize());
   }
 
   inline bool IsGhost(VertexID v) const {
-    return v >= ghost_offset_;
+    return global_to_local_map_.find(GetGlobalID(v))
+        != global_to_local_map_.end();
   }
 
-  inline bool IsGhostFromGlobal(VertexID v) {
-    return global_to_local_map_.find(v) != global_to_local_map_.end() ? IsGhost(global_to_local_map_[v]) : false;
+
+  inline bool IsGhostFromGlobal(VertexID v) const {
+    return global_to_local_map_.find(v) != global_to_local_map_.end();
   }
 
-  inline bool IsInterface(VertexID v) {
-    return IsLocal(v) ? local_vertices_data_[v].is_interface_vertex_ 
-                      : false;
+  inline bool IsInterface(VertexID v) const {
+    return local_vertices_data_[v].is_interface_vertex_;
   }
 
-  inline void SetInterface(VertexID v, bool is_interface) {
-    if (IsLocal(v)) local_vertices_data_[v].is_interface_vertex_ = is_interface;
+  inline bool IsInterfaceFromGlobal(VertexID v) const {
+    return local_vertices_data_[GetLocalID(v)].is_interface_vertex_;
   }
 
-  inline bool IsInterfaceFromGlobal(VertexID v) {
-    return IsLocalFromGlobal(v) ? local_vertices_data_[GetLocalID(v)].is_interface_vertex_ 
-                                : false;
-  }
-
-  inline VertexID GetLocalID(VertexID v) {
-#ifndef NDEBUG
-    if (global_to_local_map_.find(v) != global_to_local_map_.end()) 
-      return global_to_local_map_[v];
-    else {
-      std::cout << "R" << rank_ << " This shouldn't happen (illegal get local on v=" << v << ")" << std::endl;
-      exit(1);
+  inline VertexID GetLocalID(VertexID v) const {
+    if (IsLocalFromGlobal(v)) {
+      if (global_duplicate_id_ == v) {
+        return local_duplicate_id_;
+      } else {
+        return v - local_offset_;
+      }
+    } else {
+      return global_to_local_map_.find(v)->second;
     }
-#else 
-    return global_to_local_map_[v];
-#endif
   }
 
-  inline VertexID GetGlobalID(VertexID v) {
-    return IsLocal(v) ? local_vertices_data_[v].global_id_ 
-                      : ghost_vertices_data_[v - ghost_offset_].global_id_;
+  inline VertexID GetGlobalID(VertexID v) const {
+    if (IsLocal(v)) {
+      if (local_duplicate_id_ == v) {
+        return global_duplicate_id_;
+      } else {
+        return v + local_offset_;
+      }
+    } else {
+      return ghost_vertices_data_[v - ghost_offset_].global_id_;
+    }
   }
 
-  inline VertexID GetGhostOffset() { return ghost_offset_; }
-
-  inline PEID GetPE(VertexID v) {
+  inline PEID GetPE(VertexID v) const {
     return IsLocal(v) ? rank_
                       : ghost_vertices_data_[v - ghost_offset_].rank_;
+
   }
 
-  inline void SetPE(VertexID v, PEID pe) {
-    ghost_vertices_data_[v - ghost_offset_].rank_ = pe;
-  }
   //////////////////////////////////////////////
   // Manage local vertices/edges
   //////////////////////////////////////////////
@@ -279,6 +256,10 @@ class DynamicGraph {
   inline VertexID GetNumberOfGlobalVertices() const { return number_of_global_vertices_; }
 
   inline VertexID GetNumberOfGlobalEdges() const { return number_of_global_edges_; }
+
+  inline VertexID GetLocalOffset() const {
+    return local_offset_;
+  }
 
   inline VertexID GetNumberOfLocalVertices() const { return number_of_local_vertices_; }
   inline VertexID GetLocalVertexVectorSize() const { return local_vertices_data_.size(); }
@@ -319,16 +300,16 @@ class DynamicGraph {
   VertexID GatherNumberOfGlobalEdges(bool force=true) {
     if (number_of_global_edges_ == 0 || force) {
       number_of_global_edges_ = 0;
-#ifndef NDEBUG
-      VertexID local_edges = 0;
-      ForallVertices([&](const VertexID v) { 
-          ForallNeighbors(v, [&](const VertexID w) { local_edges++; });
-      });
-      if (local_edges != number_of_edges_) {
-        std::cout << "This shouldn't happen (different number of edges local=" << local_edges << ", counter=" << number_of_edges_ << ")" << std::endl;
-        exit(1);
-      }
-#endif
+// #ifndef NDEBUG
+//       VertexID local_edges = 0;
+//       ForallVertices([&](const VertexID v) { 
+//           ForallNeighbors(v, [&](const VertexID w) { local_edges++; });
+//       });
+//       if (local_edges != number_of_edges_) {
+//         std::cout << "This shouldn't happen (different number of edges local=" << local_edges << ", counter=" << number_of_edges_ << ")" << std::endl;
+//         exit(1);
+//       }
+// #endif
       // Check if all PEs are done
       comm_timer_.Restart();
       MPI_Allreduce(&number_of_edges_,
@@ -344,54 +325,39 @@ class DynamicGraph {
   }
 
   void SetParent(const VertexID v, const VertexID parent_v) {
-    if (IsLocal(v)) local_parent_[v] = parent_v;
-    else ghost_parent_[v - ghost_offset_] = parent_v;
+    parent_[v] = parent_v;
   }
 
   inline VertexID GetParent(const VertexID v) {
-    return IsLocal(v) ? local_parent_[v] : ghost_parent_[v - ghost_offset_];
+    return parent_[v];
   }
 
-  inline VertexID AddVertex(VertexID v) {
-    global_to_local_map_[v] = vertex_counter_;
-
-    // Update data
-    if (vertex_counter_ >= local_vertices_data_.size()) {
-      local_vertices_data_.resize(vertex_counter_ + 1);
-      local_adjacent_edges_.resize(vertex_counter_ + 1);
-      local_parent_.resize(vertex_counter_ + 1);
-      local_active_.resize(vertex_counter_ + 1);
-    }
-
-    // Update data
-    local_vertices_data_[vertex_counter_].is_interface_vertex_ = false;
-    local_vertices_data_[vertex_counter_].global_id_ = v;
-    local_active_[vertex_counter_] = true;
-
-    number_of_vertices_++;
-    number_of_local_vertices_++;
-    return vertex_counter_++;
-  }
+  inline VertexID AddVertex() { return vertex_counter_++; }
 
   VertexID AddGhostVertex(VertexID v, PEID pe) {
-    VertexID local_id = ghost_vertex_counter_ + ghost_offset_;
-    global_to_local_map_[v] = local_id;
+    global_to_local_map_[v] = ghost_counter_;
 
-    // Update data
-    if (ghost_vertex_counter_ >= ghost_vertices_data_.size()) {
-      ghost_vertices_data_.resize(ghost_vertex_counter_ + 1);
-      ghost_adjacent_edges_.resize(ghost_vertex_counter_ + 1);
-      ghost_parent_.resize(ghost_vertex_counter_ + 1);
-      ghost_active_.resize(ghost_vertex_counter_ + 1);
+    // Fix overflows
+    if (vertex_counter_ >= is_active_.size()) {
+      is_active_.resize(vertex_counter_ + 1);
+    }
+    if (ghost_counter_ - ghost_offset_ >= ghost_vertices_data_.size()) {
+      ghost_vertices_data_.resize(ghost_counter_ - ghost_offset_ + 1);
     }
 
     // Update data
-    ghost_vertices_data_[local_id - ghost_offset_].global_id_ = v;
-    ghost_vertices_data_[local_id - ghost_offset_].rank_ = pe;
-    ghost_active_[local_id - ghost_offset_] = true;
+    ghost_vertices_data_[ghost_counter_ - ghost_offset_].rank_ = pe;
+    ghost_vertices_data_[ghost_counter_ - ghost_offset_].global_id_ = v;
+    is_active_[vertex_counter_] = true;
 
-    number_of_vertices_++;
-    return ghost_vertex_counter_++;
+    vertex_counter_++;
+    return ghost_counter_++;
+  }
+
+  // TODO: Not sure if this works
+  inline void AddDuplicateVertex(VertexID global_id) {
+    local_duplicate_id_ = 0;
+    global_duplicate_id_ = global_id;
   }
 
   EdgeID AddEdge(VertexID from, VertexID to, PEID rank) {
@@ -400,18 +366,16 @@ class DynamicGraph {
     } else {
 #ifndef NDEBUG
       if (rank == size_) {
-        std::cout << "This shouldn't happen (illegal add edge)" << std::endl;
-        exit(1);
+        throw "This shouldn't happen";
       }
-      // NOTE: from always local 
       if (IsGhostFromGlobal(to)) { // true if ghost already in map, otherwise false
         local_vertices_data_[from].is_interface_vertex_ = true;
         number_of_cut_edges_++;
         AddGhostEdge(from, to);
         SetAdjacentPE(rank, true);
       } else {
-        std::cout << "This shouldn't happen (illegal add edge)" << std::endl;
-        exit(1);
+        //std::cout << "This shouldn't happen" << std::endl;
+        throw "This shouldn't happen";
       }
 #else 
       local_vertices_data_[from].is_interface_vertex_ = true;
@@ -420,110 +384,27 @@ class DynamicGraph {
       SetAdjacentPE(rank, true);
 #endif
     }
-    number_of_edges_++;
-    return edge_counter_++;
+    edge_counter_++;
+    return edge_counter_;
   }
 
   void AddLocalEdge(VertexID from, VertexID to) {
-    if (IsLocal(from)) {
-      if (from >= local_adjacent_edges_.size()) {
-        local_adjacent_edges_.resize(from + 1);
-      }
-      local_adjacent_edges_[from].emplace_back(global_to_local_map_[to]);
+    if (from >= adjacent_edges_.size()) {
+      adjacent_edges_.resize(from + 1);
     }
-#ifndef NDEBUG
-    else if (IsGhost(from)) {
-      if (from - ghost_offset_ >= ghost_adjacent_edges_.size()) {
-        ghost_adjacent_edges_.resize(from - ghost_offset_ + 1);
-      }
-      ghost_adjacent_edges_[from - ghost_offset_].emplace_back(global_to_local_map_[to]);
-    } else {
-      std::cout << "This shouldn't happen (illegal add local edge)" << std::endl;
-      exit(1);
-    }
-#else 
-    else {
-      if (from - ghost_offset_ >= ghost_adjacent_edges_.size()) {
-        ghost_adjacent_edges_.resize(from - ghost_offset_ + 1);
-      }
-      ghost_adjacent_edges_[from - ghost_offset_].emplace_back(global_to_local_map_[to]);
-    }
-#endif
+    adjacent_edges_[from].emplace_back(to - local_offset_);
   }
 
   void AddGhostEdge(VertexID from, VertexID to) {
-    AddLocalEdge(from, to);
+    if (from >= adjacent_edges_.size()) {
+      adjacent_edges_.resize(from + 1);
+    }
+    adjacent_edges_[from].emplace_back(global_to_local_map_[to]);
   }
 
-  void RemoveEdge(VertexID from, VertexID to) {
-    VertexID delete_pos = ghost_offset_;
-#ifndef NDEBUG
-    if (IsLocal(from)) {
-      for (VertexID i = 0; i < local_adjacent_edges_[from].size(); i++) {
-        if (local_adjacent_edges_[from][i].target_ == to) {
-          delete_pos = i;
-          break;
-        }
-      }
-      if (delete_pos != ghost_offset_) {
-        local_adjacent_edges_[from].erase(local_adjacent_edges_[from].begin() + delete_pos);
-        if (IsGhost(to)) number_of_cut_edges_--;
-        number_of_edges_--;
-      } else {
-        std::cout << "R" << rank_ << " This shouldn't happen (illegal remove edge (" << GetGlobalID(from) << "," << GetGlobalID(to) << "))" << std::endl;
-        exit(1);
-      }
-    } else {
-      std::cout << "R" << rank_ << " This shouldn't happen (illegal remove edge (ghost source))" << std::endl;
-      exit(1);
-    }
-#else
-    for (VertexID i = 0; i < local_adjacent_edges_[from].size(); i++) {
-      if (local_adjacent_edges_[from][i].target_ == to) {
-        delete_pos = i;
-        break;
-      }
-    }
-    local_adjacent_edges_[from].erase(local_adjacent_edges_[from].begin() + delete_pos);
-    if (IsGhost(to)) number_of_cut_edges_--;
-    number_of_edges_--;
-#endif
-  }
-
-  bool RelinkEdge(VertexID from, VertexID old_to, VertexID new_to, PEID rank) {
-    VertexID old_to_local = GetLocalID(old_to);
-    VertexID new_to_local = GetLocalID(new_to);
-
-    if (IsLocal(new_to_local)) {
-      if (IsGhost(old_to_local)) number_of_cut_edges_--;
-    }
-    else {
-      if (!IsGhost(old_to_local)) number_of_cut_edges_++;
-#ifndef NDEBUG
-      if (rank == size_) {
-        std::cout << "This shouldn't happen (illegal relink edge)" << std::endl;
-        exit(1);
-      }
-#endif
-      SetAdjacentPE(rank, true);
-    }
-
-    // Actual relink
-    // NOTE: from should always be local
-    bool success = false;
-    for (VertexID i = 0; i < local_adjacent_edges_[from].size(); i++) {
-      if (local_adjacent_edges_[from][i].target_ == old_to_local) {
-        local_adjacent_edges_[from][i].target_ = new_to_local;
-        success = true;
-      }
-    }
-
-    return success;
-  }
 
   void ReserveEdgesForVertex(VertexID v, VertexID num_edges) {
-    if (IsLocal(v)) local_adjacent_edges_[v].reserve(num_edges);
-    else ghost_adjacent_edges_[v - ghost_offset_].reserve(num_edges);
+    adjacent_edges_[v].reserve(num_edges);
   }
 
   void RemoveAllEdges(VertexID from) {
@@ -531,8 +412,7 @@ class DynamicGraph {
       if (IsGhost(w)) number_of_cut_edges_--;
       number_of_edges_--;
     });
-    if (IsLocal(from)) local_adjacent_edges_[from].clear();
-    else ghost_adjacent_edges_[from - ghost_offset_].clear();
+    adjacent_edges_[from].clear();
   }
 
   // Local IDs
@@ -544,8 +424,7 @@ class DynamicGraph {
   // }
 
   inline VertexID GetVertexDegree(const VertexID v) const {
-    return IsLocal(v) ? local_adjacent_edges_[v].size()
-                      : ghost_adjacent_edges_[v - ghost_offset_].size();
+    return adjacent_edges_[v].size();
   }
 
   //////////////////////////////////////////////
@@ -627,9 +506,7 @@ class DynamicGraph {
 
     std::cout << "[R" << rank << "] [G] [ ";
     for (auto &e : global_to_local_map_) {
-      if (IsGhost(e.second)) {
-        std::cout << e.first << " ";
-      }
+      std::cout << e.first << " ";
     }
     std::cout << "]" << std::endl;
   }
@@ -760,12 +637,11 @@ class DynamicGraph {
 
   struct LocalVertexData {
     bool is_interface_vertex_;
-    VertexID global_id_;
 
     LocalVertexData()
-        : global_id_(0), is_interface_vertex_(false) {}
-    LocalVertexData(VertexID global_id, bool interface)
-        : global_id_(global_id), is_interface_vertex_(interface) {}
+        : is_interface_vertex_(false) {}
+    LocalVertexData(const VertexID id, bool interface)
+        : is_interface_vertex_(interface) {}
   };
 
   struct GhostVertexData {
@@ -785,6 +661,7 @@ class DynamicGraph {
     explicit Edge(VertexID target) : target_(target) {}
   };
 
+
   // Network information
   PEID rank_, size_;
 
@@ -792,15 +669,13 @@ class DynamicGraph {
   Config config_;
 
   // Vertices and edges
-  std::vector<std::vector<Edge>> local_adjacent_edges_;
-  std::vector<std::vector<Edge>> ghost_adjacent_edges_;
+  std::vector<std::vector<Edge>> adjacent_edges_;
 
   std::vector<LocalVertexData> local_vertices_data_;
   std::vector<GhostVertexData> ghost_vertices_data_;
 
   // Shortcutting
-  std::vector<VertexID> local_parent_;
-  std::vector<VertexID> ghost_parent_;
+  std::vector<VertexID> parent_;
   google::dense_hash_map<VertexID, VertexID> label_shortcut_;
 
   VertexID number_of_vertices_;
@@ -812,22 +687,26 @@ class DynamicGraph {
   EdgeID number_of_global_edges_;
 
   // Vertex mapping
+  VertexID local_offset_;
+  VertexID ghost_offset_;
   google::dense_hash_map<VertexID, VertexID> global_to_local_map_;
 
   // Contraction
-  std::vector<VertexID> local_contraction_vertices_;
-  std::vector<VertexID> ghost_contraction_vertices_;
-  std::vector<bool> local_active_;
-  std::vector<bool> ghost_active_;
+  std::vector<VertexID> contraction_vertices_;
+  std::vector<bool> is_active_;
+
+  // Duplicates
+  // google::dense_hash_set<VertexID> duplicates_;
+  VertexID local_duplicate_id_;
+  VertexID global_duplicate_id_;
 
   // Adjacent PEs
   google::dense_hash_set<PEID> adjacent_pes_;
 
   // Temporary counters
   VertexID vertex_counter_;
-  VertexID ghost_vertex_counter_;
+  VertexID ghost_counter_;
   EdgeID edge_counter_;
-  VertexID ghost_offset_;
 
   // Statistics
   float comm_time_;

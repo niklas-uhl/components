@@ -22,7 +22,7 @@
 #ifndef _PAYLOAD_H_
 #define _PAYLOAD_H_
 
-#include "config.h"
+#include "kacomp/config.h"
 
 struct VertexPayload {
   VertexID deviate_;

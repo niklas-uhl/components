@@ -24,14 +24,14 @@
 
 #include <memory>
 
-#include "config.h"
-#include "definitions.h"
-#include "payload.h"
+#include "kacomp/config.h"
+#include "kacomp/definitions.h"
+#include "kacomp/communication/payload.h"
 // #include "dynamic_graph_comm.h"
 // #include "semidynamic_graph_comm.h"
 // #include "static_graph_comm.h"
 
-#include "comm_utils.h"
+#include "kacomp/communication/comm_utils.h"
 #include <google/dense_hash_map>
 #include <google/dense_hash_set>
 #include <google/sparse_hash_set>
