@@ -190,8 +190,8 @@ class AllReduce {
     // Gather number of vertices/edges for each PE
     std::vector<int> num_edges;
     if (rank_ == ROOT) num_edges.resize(size_, 0);
-    MPI_Gather(&num_local_vertices, 1, MPI_INT, &num_vertices_per_pe_[0], 1, MPI_INT, ROOT, MPI_COMM_WORLD);
-    MPI_Gather(&num_local_edges, 1, MPI_INT, &num_edges[0], 1, MPI_INT, ROOT, MPI_COMM_WORLD);
+    MPI_Gather(&num_local_vertices, 1, MPI_INT, num_vertices_per_pe_.data(), 1, MPI_INT, ROOT, MPI_COMM_WORLD);
+    MPI_Gather(&num_local_edges, 1, MPI_INT, num_edges.data(), 1, MPI_INT, ROOT, MPI_COMM_WORLD);
 
     // Compute displacements
     std::vector<int> displ_vertices;
@@ -220,14 +220,14 @@ class AllReduce {
       global_labels_.resize(num_global_vertices);
       global_edges_.resize(num_global_edges);
     }
-    MPI_Gatherv(&local_vertices_[0], num_local_vertices, MPI_VERTEX,
-                &global_vertices_[0], &num_vertices_per_pe_[0], &displ_vertices[0], MPI_VERTEX,
+    MPI_Gatherv(local_vertices_.data(), num_local_vertices, MPI_VERTEX,
+                global_vertices_.data(), num_vertices_per_pe_.data(), displ_vertices.data(), MPI_VERTEX,
                 ROOT, MPI_COMM_WORLD);
-    MPI_Gatherv(&local_labels_[0], num_local_vertices, MPI_VERTEX,
-                &global_labels_[0], &num_vertices_per_pe_[0], &displ_vertices[0], MPI_VERTEX,
+    MPI_Gatherv(local_labels_.data(), num_local_vertices, MPI_VERTEX,
+                global_labels_.data(), num_vertices_per_pe_.data(), displ_vertices.data(), MPI_VERTEX,
                 ROOT, MPI_COMM_WORLD);
-    MPI_Gatherv(&local_edges_[0], num_local_edges, MPI_EDGE,
-                &global_edges_[0], &num_edges[0], &displ_edges[0], MPI_EDGE,
+    MPI_Gatherv(local_edges_.data(), num_local_edges, MPI_EDGE,
+                global_edges_.data(), num_edges.data(), displ_edges.data(), MPI_EDGE,
                 ROOT, MPI_COMM_WORLD);
   } 
 
@@ -242,8 +242,8 @@ class AllReduce {
 
     // Scatter to other PEs
     int num_local_vertices = local_vertices_.size();
-    MPI_Scatterv(&global_labels_[0], &num_vertices_per_pe_[0], &displ_labels[0], MPI_VERTEX, 
-                 &local_labels_[0], num_local_vertices, MPI_VERTEX, 
+    MPI_Scatterv(global_labels_.data(), num_vertices_per_pe_.data(), displ_labels.data(), MPI_VERTEX, 
+                 local_labels_.data(), num_local_vertices, MPI_VERTEX, 
                  ROOT, MPI_COMM_WORLD);
 
     for (int i = 0; i < num_local_vertices; ++i) {

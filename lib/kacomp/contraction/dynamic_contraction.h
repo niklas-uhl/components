@@ -569,7 +569,9 @@ class DynamicContraction {
 
   void UndoContraction() {
     // Remove last sentinel
-    removed_edges_.pop();
+    if (!removed_edges_.empty()) {
+      removed_edges_.pop();
+    }
     while (contraction_level_ > 0) {
       contraction_timer_.Restart();
       // Remove current edges from current level
