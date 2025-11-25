@@ -31,6 +31,8 @@
 #include "kacomp/data_structures/static_graph.h"
 #include "edge_hash.h"
 
+namespace kacomp {
+
 class DynamicContraction {
  public:
   DynamicContraction(DynamicGraphCommunicator &g, const Config &conf, const PEID rank, const PEID size)
@@ -714,5 +716,7 @@ class DynamicContraction {
   VertexID send_volume_;
   VertexID recv_volume_;
 };
+
+}
 
 #endif

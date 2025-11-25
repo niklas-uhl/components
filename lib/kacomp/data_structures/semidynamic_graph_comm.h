@@ -45,6 +45,8 @@
 #include "kacomp/tools/timer.h"
 #include "kacomp/communication/payload.h"
 
+namespace kacomp {
+
 template<typename GraphType> 
 class VertexCommunicator;
 
@@ -218,5 +220,7 @@ class SemidynamicGraphCommunicator : public SemidynamicGraph {
   // Communication interface
   VertexCommunicator<SemidynamicGraphCommunicator> *ghost_comm_;
 };
+
+}
 
 #endif

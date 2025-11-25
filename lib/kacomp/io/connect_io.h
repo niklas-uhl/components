@@ -34,6 +34,8 @@
 #include <common/base_types.hpp>
 #include <mxx/comm.hpp>
 
+namespace kacomp {
+
 
 namespace conn 
 {
@@ -271,6 +273,7 @@ namespace conn
 
     };
   }
+}
 }
 
 #endif

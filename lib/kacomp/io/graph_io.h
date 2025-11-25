@@ -44,6 +44,8 @@
 #include "kacomp/data_structures/static_graph.h"
 #include "kacomp/data_structures/static_graph_comm.h"
 
+namespace kacomp {
+
 typedef struct {
   VertexID first_vertex, rank;
 } Boundary;
@@ -1327,5 +1329,7 @@ class GraphIO {
     });
   }
 };
+
+}
 
 #endif

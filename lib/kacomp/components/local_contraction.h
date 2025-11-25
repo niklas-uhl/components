@@ -36,6 +36,8 @@
 #include "utils.h"
 #include "all_reduce.h"
 
+namespace kacomp {
+
 class LocalContraction {
  public:
   LocalContraction(const Config &conf, const PEID rank, const PEID size)
@@ -371,4 +373,5 @@ class LocalContraction {
   }
 };
 
+}
 #endif

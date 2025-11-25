@@ -43,6 +43,7 @@
 #include "kacomp/config.h"
 #include "kacomp/tools/timer.h"
 
+namespace kacomp {
 
 class StaticGraph {
 
@@ -702,5 +703,7 @@ class StaticGraph {
   VertexID send_volume_;
   VertexID recv_volume_;
 };
+  
+}
 
 #endif

@@ -25,6 +25,8 @@
 
 #include "definitions.h"
 
+namespace kacomp {
+
 class UnionFind {
  public:
   UnionFind(VertexID number_of_vertices) 
@@ -69,5 +71,7 @@ class UnionFind {
   // Number of elements in UF data structure.
   VertexID number_of_elements_;
 };
+
+}  
 
 #endif 

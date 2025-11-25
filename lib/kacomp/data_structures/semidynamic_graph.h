@@ -43,6 +43,8 @@
 #include "kacomp/config.h"
 #include "kacomp/tools/timer.h"
 
+namespace kacomp {
+
 class SemidynamicGraph {
  public:
   SemidynamicGraph(const Config& conf, const PEID rank, const PEID size)
@@ -714,5 +716,7 @@ class SemidynamicGraph {
   VertexID send_volume_;
   VertexID recv_volume_;
 };
+
+}
 
 #endif

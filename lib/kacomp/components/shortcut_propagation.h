@@ -35,6 +35,8 @@
 #include "dynamic_graph_comm.h"
 #include "static_graph_comm.h"
 
+namespace kacomp {
+
 class ShortcutPropagation {
  public:
   ShortcutPropagation(const Config &conf, const PEID rank, const PEID size)
@@ -430,5 +432,7 @@ class ShortcutPropagation {
     }
   }
 };
+
+}
 
 #endif

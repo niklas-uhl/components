@@ -28,7 +28,8 @@
 #include "definitions.h"
 
 void ParseParameters(int argn, char **argv,
-                     Config &conf) {
+                     kacomp::Config &conf) {
+  using namespace kacomp;
   ArgParser args(argn, argv);
 
   // RNG
@@ -99,7 +100,7 @@ void ParseParameters(int argn, char **argv,
   conf.gen_periodic = args.IsSet("periodic");
 }
 
-void PrintParameters(Config &conf) {
+void PrintParameters(kacomp::Config &conf) {
   std::cout << "CONFIG" << std::endl;
   std::cout << "type" << "\t\t" << conf.input_type << std::endl;
   std::cout << "infile" << "\t\t" << conf.input_file << std::endl;

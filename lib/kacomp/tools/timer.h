@@ -25,6 +25,7 @@
 
 #include <mpi.h>
 
+namespace kacomp {
 
 class Timer {
  public:
@@ -42,5 +43,7 @@ class Timer {
 
   double start_;
 };
+  
+}
 
 #endif

@@ -35,6 +35,8 @@
 #include "dynamic_graph_comm.h"
 #include "static_graph_comm.h"
 
+namespace kacomp {
+
 class Propagation {
  public:
   Propagation(const Config &conf, const PEID rank, const PEID size)
@@ -189,5 +191,7 @@ class Propagation {
     }
   }
 };
+
+}
 
 #endif

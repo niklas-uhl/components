@@ -27,6 +27,8 @@
 #include "definitions.h"
 #include <climits>
 
+namespace kacomp {
+
 struct HashedEdge {
   VertexID k;
   VertexID source;
@@ -49,5 +51,7 @@ struct EdgeComparator {
 
 // typedef google::dense_hash_set<HashedEdge, HashFunction, EdgeComparator> EdgeHash;
 typedef std::unordered_set<HashedEdge, HashFunction, EdgeComparator> EdgeHash;
+
+}
 
 #endif 

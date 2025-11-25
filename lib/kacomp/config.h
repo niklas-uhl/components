@@ -25,6 +25,8 @@
 #include <string>
 #include "definitions.h"
 
+namespace kacomp {
+
 // Configuration for the generator.
 struct Config {
   Config() = default;
@@ -85,5 +87,7 @@ struct Config {
   float gen_gamma;
   float gen_d;
 };
+
+}
 
 #endif

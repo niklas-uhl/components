@@ -46,6 +46,8 @@
 #include "kacomp/communication/payload.h"
 #include "kacomp/communication/vertex_comm.h"
 
+namespace kacomp {
+
 // template<typename GraphType> 
 // class VertexCommunicator;
 
@@ -245,5 +247,7 @@ class DynamicGraphCommunicator : public DynamicGraph {
   // Communication interface
   VertexCommunicator<DynamicGraphCommunicator> *ghost_comm_;
 };
+
+}
 
 #endif

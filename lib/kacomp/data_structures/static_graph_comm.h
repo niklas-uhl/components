@@ -46,6 +46,8 @@
 #include "kacomp/communication/payload.h"
 #include "kacomp/communication/vertex_comm.h"
 
+namespace kacomp {
+
 // template<typename GraphType> 
 // class VertexCommunicator;
 
@@ -157,5 +159,7 @@ class StaticGraphCommunicator : public StaticGraph {
   // Communication interface
   VertexCommunicator<StaticGraphCommunicator> *ghost_comm_;
 };
+
+}
 
 #endif

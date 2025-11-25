@@ -29,6 +29,8 @@
 
 #include <mpi.h>
 
+namespace kacomp {
+
 class CommunicationUtility {
  public:
 
@@ -197,5 +199,7 @@ class CommunicationUtility {
     return messages;
   }
 };
+
+}
 
 #endif

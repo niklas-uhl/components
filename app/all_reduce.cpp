@@ -31,6 +31,7 @@
 
 int main(int argn, char **argv) {
   // Init MPI
+  using namespace kacomp;
   MPI_Init(&argn, &argv);
   PEID rank, size;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);

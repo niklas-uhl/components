@@ -32,6 +32,8 @@
 #include "kacomp/data_structures/static_graph.h"
 #include "kacomp/data_structures/static_graph_comm.h"
 
+namespace kacomp {
+
 class Utility {
  public:
   template <typename GraphType>
@@ -134,5 +136,7 @@ class Utility {
 #endif
   } 
 };
+
+}
 
 #endif

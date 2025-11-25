@@ -27,6 +27,8 @@
 #include "kacomp/io/graph_io.h"
 #include <kagen.h>
 
+namespace kacomp {
+
 class IOUtility {
  public:
   template<typename GraphType>
@@ -125,5 +127,7 @@ class IOUtility {
     }
   }
 };
+
+}
 
 #endif

@@ -23,6 +23,8 @@
 #define _VERTEX_COMMUNICATOR_H_
 
 #include <memory>
+#include <iostream>
+#include <random>
 
 #include "kacomp/config.h"
 #include "kacomp/definitions.h"
@@ -35,6 +37,8 @@
 #include <google/dense_hash_map>
 #include <google/dense_hash_set>
 #include <google/sparse_hash_set>
+
+namespace kacomp {
 
 template<typename GraphType>
 class VertexCommunicator {
@@ -136,11 +140,6 @@ class VertexCommunicator {
                      const VertexPayload &msg);
 };
 
-#include <iostream>
-#include <random>
-
-#include "vertex_comm.h"
-
 template<typename GraphType>
 void VertexCommunicator<GraphType>::AddMessage(const VertexID v,
                                                const VertexPayload &msg) {
@@ -228,6 +227,8 @@ void VertexCommunicator<GraphType>::PlaceInBuffer(const PEID &pe,
     SetPackedPE(pe, true);
 }
 
+
+}
 
 
 // template class VertexCommunicator<DynamicGraphCommunicator>;

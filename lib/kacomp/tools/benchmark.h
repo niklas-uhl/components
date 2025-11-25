@@ -4,6 +4,8 @@
 #include <cmath>
 #include "macros_assertions.h"
 
+namespace {
+
 // template-based loop unrolling
 template<size_t N>
 struct FauxUnroll {
@@ -46,5 +48,7 @@ struct Statistics {
     return sqrt(nvar_ / (count_ - 1));
   }
 };
+
+}
 
 #endif

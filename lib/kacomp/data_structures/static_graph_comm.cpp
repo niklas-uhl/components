@@ -3,6 +3,8 @@
 
 #include "static_graph_comm.h"
 #include "kacomp/communication/vertex_comm.h"
+
+namespace kacomp {
   
 StaticGraphCommunicator::StaticGraphCommunicator(const Config& conf, const PEID rank, const PEID size) 
     : StaticGraph(conf, rank, size),
@@ -129,5 +131,7 @@ VertexID StaticGraphCommunicator::GetSendVolume() {
 
 VertexID StaticGraphCommunicator::GetReceiveVolume() {
   return recv_volume_ + ghost_comm_->GetReceiveVolume();
+}
+  
 }
 

@@ -28,6 +28,8 @@
 #define MPI_VERTEX MPI_UNSIGNED_LONG_LONG
 // #define MPI_VERTEX MPI_UNSIGNED_LONG
 
+namespace kacomp {
+
 // Constants
 using PEID = int;
 const PEID ROOT = 0;
@@ -59,5 +61,7 @@ const int CAGTag = 10;
 const int ContractionTag = 100;
 const int ExpTag = 1000;
 const int CommTag = 10000;
+
+}
 
 #endif

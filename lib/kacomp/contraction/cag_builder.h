@@ -36,6 +36,7 @@
 #include "edge_hash.h"
 #include <ips4o.hpp>
 
+namespace kacomp {
 
 template <typename GraphType, typename LabelType = std::vector<VertexID>>
 class CAGBuilder {
@@ -676,5 +677,7 @@ class CAGBuilder {
     });
   }
 };
+
+}
 
 #endif

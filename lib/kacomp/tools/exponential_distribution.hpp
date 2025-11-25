@@ -65,6 +65,8 @@
 #include <cmath>
 #include <random>
 
+namespace kacomp {
+
 namespace sampling {
 
 template <typename int_t = int64_t, typename fp_t = double>
@@ -235,6 +237,8 @@ using hypergeometric = hypergeometric_distribution<>;
 
 
 } // namespace sampling
+
+}
 
 #endif // SAMPLING_HYPERGEOMETRIC_DISTRIBUTION_HEADER
 

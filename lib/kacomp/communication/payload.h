@@ -24,6 +24,8 @@
 
 #include "kacomp/config.h"
 
+namespace kacomp {
+
 struct VertexPayload {
   VertexID deviate_;
   VertexID label_;
@@ -72,5 +74,7 @@ struct VertexPayload {
     return !(*this == rhs);
   }
 };
+
+}
 
 #endif

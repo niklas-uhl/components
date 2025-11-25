@@ -31,6 +31,8 @@
 #include "kacomp/io/graph_io.h"
 #include "utils.h"
 
+namespace kacomp {
+
 template <typename GraphType>
 class AllReduce {
  public:
@@ -271,5 +273,7 @@ class AllReduce {
     }
   }
 };
+
+}
 
 #endif

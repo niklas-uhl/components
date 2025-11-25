@@ -43,6 +43,8 @@
 #include "kacomp/config.h"
 #include "kacomp/tools/timer.h"
 
+namespace kacomp {
+
 class DynamicGraph {
  public:
   DynamicGraph(const Config& conf, const PEID rank, const PEID size)
@@ -835,5 +837,7 @@ class DynamicGraph {
   VertexID send_volume_;
   VertexID recv_volume_;
 };
+
+}
 
 #endif

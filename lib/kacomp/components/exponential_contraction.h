@@ -36,6 +36,8 @@
 #include "all_reduce.h"
 #include "kacomp/io/io_utils.h"
 
+namespace kacomp {
+  
 class ExponentialContraction {
  public:
   ExponentialContraction(const Config &conf, const PEID rank, const PEID size)
@@ -1331,5 +1333,7 @@ class ExponentialContraction {
   }
 
 };
+
+}
 
 #endif
