@@ -200,7 +200,9 @@ void VertexCommunicator<GraphType>::UpdateGhostVertices() {
 #ifdef TIEBREAK_DEGREE
       VertexID degree = buffer[i + 4];
 #endif
-
+      if (!g_->IsGhostFromGlobal(global_id) || !g_->IsLocalFromGlobal(global_id)) {
+	continue;
+      }
       g_->HandleGhostUpdate(g_->GetLocalID(global_id), 
                             label, 
                             deviate, 
