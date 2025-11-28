@@ -64,6 +64,7 @@ class ExponentialContraction {
     VertexID global_edges = g.GatherNumberOfGlobalEdges();
     sequential_limit_ = ComputeSequentialLimit(global_edges);
     rng_offset_ = global_vertices;
+    label_offset_ = 0;
 
     contraction_timer_.Restart();
     if constexpr (std::is_same<GraphType, StaticGraph>::value) {
@@ -345,6 +346,7 @@ class ExponentialContraction {
   // Algorithm state
   unsigned int iteration_;
   VertexID rng_offset_;
+  VertexID label_offset_;
   VertexID sequential_limit_;
 
   // Statistics
@@ -867,10 +869,13 @@ class ExponentialContraction {
       g.SetVertexLabel(v, cag.GetVertexLabel(cv));
       resolved[v] = true;
     });
+    VertexID offset = g.GetLocalVertexVectorSize();
+    MPI_Allreduce(MPI_IN_PLACE, &offset, 1, MPI_VERTEX, MPI_SUM, MPI_COMM_WORLD);
+    label_offset_ += offset;
     // Turn on remaining vertices and set their labels
     g.SetAllVerticesActive(true);
     g.ForallLocalVertices([&](const VertexID v) {
-      if (!resolved[v]) g.SetVertexLabel(v, rng_offset_ + g.GetGlobalID(v));
+      if (!resolved[v]) g.SetVertexLabel(v, label_offset_ + g.GetGlobalID(v));
     });
   }
 
@@ -882,10 +887,13 @@ class ExponentialContraction {
       g_label[v] = cag.GetVertexLabel(cv);
       resolved[v] = true;
     });
+    VertexID offset = g.GetLocalVertexVectorSize();
+    MPI_Allreduce(MPI_IN_PLACE, &offset, 1, MPI_VERTEX, MPI_SUM, MPI_COMM_WORLD);
+    label_offset_ += offset;
     // Turn on remaining vertices and set their labels
     g.SetAllVerticesActive(true);
     g.ForallLocalVertices([&](const VertexID v) {
-      if (!resolved[v]) g_label[v] = rng_offset_ + g.GetGlobalID(v);
+      if (!resolved[v]) g_label[v] = label_offset_ + g.GetGlobalID(v);
     });
   }
 
@@ -899,10 +907,13 @@ class ExponentialContraction {
       g_label[v] = cag_label[cv];
       resolved[v] = true;
     });
+    VertexID offset = g.GetLocalVertexVectorSize();
+    MPI_Allreduce(MPI_IN_PLACE, &offset, 1, MPI_VERTEX, MPI_SUM, MPI_COMM_WORLD);
+    label_offset_ += offset;
     // Turn on remaining vertices and set their labels
     g.SetAllVerticesActive(true);
     g.ForallLocalVertices([&](const VertexID v) {
-      if (!resolved[v]) g_label[v] = g.GetGlobalID(v);
+      if (!resolved[v]) g_label[v] = label_offset_ + g.GetGlobalID(v);
     });
   }
 
