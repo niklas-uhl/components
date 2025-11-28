@@ -57,10 +57,10 @@ const int DeleteKey = -2;
 const VertexID MaxDeviate = std::numeric_limits<VertexID>::max() - 1;
 
 // Message tags
-const int CAGTag = 10;
-const int ContractionTag = 100;
-const int ExpTag = 1000;
-const int CommTag = 10000;
+const int CAGTag = 100;
+const int ContractionTag = 200;
+const int ExpTag = 300;
+const int CommTag = 400;
 
 }
 

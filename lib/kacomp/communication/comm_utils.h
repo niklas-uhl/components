@@ -61,7 +61,7 @@ class CommunicationUtility {
       if (send_buffers[pe].size() > 0) {
         MPI_Issend(send_buffers[pe].data(), 
                    static_cast<int>(send_buffers[pe].size()), 
-                   MPI_VERTEX, pe, message_tag * size + pe, MPI_COMM_WORLD, &requests[req++]);
+                   MPI_VERTEX, pe, message_tag /* * size + pe */, MPI_COMM_WORLD, &requests[req++]);
         if (pe == rank) {
           std::cout << "R" << rank << " ERROR selfmessage" << std::endl;
           exit(1);
@@ -77,7 +77,7 @@ class CommunicationUtility {
       while (iprobe_success > 0) {
         iprobe_success = 0;
         MPI_Status st{};
-        MPI_Iprobe(MPI_ANY_SOURCE, message_tag * size + rank, MPI_COMM_WORLD, &iprobe_success, &st);
+        MPI_Iprobe(MPI_ANY_SOURCE, message_tag /* * size + rank */, MPI_COMM_WORLD, &iprobe_success, &st);
         if (iprobe_success > 0) {
           int message_length;
           MPI_Get_count(&st, MPI_VERTEX, &message_length);
@@ -105,7 +105,7 @@ class CommunicationUtility {
       while (iprobe_success > 0) {
         iprobe_success = 0;
         MPI_Status st{};
-        MPI_Iprobe(MPI_ANY_SOURCE, message_tag * size + rank, MPI_COMM_WORLD, &iprobe_success, &st);
+        MPI_Iprobe(MPI_ANY_SOURCE, message_tag /* * size + rank */, MPI_COMM_WORLD, &iprobe_success, &st);
         if (iprobe_success > 0) {
           int message_length;
           MPI_Get_count(&st, MPI_VERTEX, &message_length);
