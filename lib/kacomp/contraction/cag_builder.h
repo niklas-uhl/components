@@ -436,6 +436,9 @@ class CAGBuilder {
         g_.SetContractionVertex(v, largest_component[pe]);
       }
     });
+    // return;
+    // FIXME: that shortcut isolates components, but seems to be required to make progress
+    // otherwise the LP never terminates
 
     g_.ForallLocalVertices([&](const VertexID v) {
       if (g_.IsInterface(v)) {
