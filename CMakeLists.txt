@@ -50,8 +50,15 @@ FetchContent_Declare(
   EXCLUDE_FROM_ALL
 )
 FetchContent_MakeAvailable(ips4o kagen)
-list(APPEND CMAKE_MODULE_PATH ${kagen_SOURCE_DIR}/cmake/modules)
-find_package(Sparsehash REQUIRED)
+# list(APPEND CMAKE_MODULE_PATH ${kagen_SOURCE_DIR}/cmake/modules)
+FetchContent_Declare(sparsehash
+  GIT_REPOSITORY https://github.com/niklas-uhl/sparsehash-cmake
+  GIT_TAG master
+  SYSTEM
+  EXCLUDE_FROM_ALL
+)
+FetchContent_MakeAvailable(sparsehash)
+# find_package(Sparsehash REQUIRED)
 
 # add_subdirectory(extern/KaHIP)
 
@@ -127,7 +134,7 @@ set(LIBS
         MPI::MPI_CXX
         KaGen::KaGen
         ips4o
-	Sparsehash::Sparsehash
+	sparsehash::sparsehash
         # bliss
         #kahip
         # asan
