@@ -35,6 +35,7 @@
 #include "kacomp/communication/comm_utils.h"
 #include "all_reduce.h"
 #include "kacomp/io/io_utils.h"
+#include <kamping/measurements/timer.hpp>
 
 namespace kacomp {
   
@@ -68,7 +69,9 @@ class ExponentialContraction {
 
     contraction_timer_.Restart();
     if constexpr (std::is_same<GraphType, StaticGraph>::value) {
+      kamping::measurements::timer().synchronize_and_start("find_local_components");
       FindLocalComponents<StaticGraph>(g, g_labels);
+      kamping::measurements::timer().stop();
 #ifndef NSTATUS
       if (rank_ == ROOT || config_.print_verbose) 
         std::cout << "[STATUS] |- R" << rank_ << " Finding local components on input took " 
@@ -77,11 +80,14 @@ class ExponentialContraction {
       
       if (config_.single_level_contraction) {
         contraction_timer_.Restart();
+	kamping::measurements::timer().synchronize_and_start("build_cag");
         CAGBuilder<StaticGraph> 
           contraction(g, g_labels, config_, rank_, size_);
         auto cag 
           = contraction.BuildComponentAdjacencyGraph<DynamicGraphCommunicator>();
+	
         cag.ResetCommunicator();
+	kamping::measurements::timer().stop();
 #ifndef NDEBUG
         OutputStats<DynamicGraphCommunicator>(cag);
 #endif
@@ -136,10 +142,13 @@ class ExponentialContraction {
       } else if (config_.use_contraction) {
         // First round of contraction
         contraction_timer_.Restart();
+	kamping::measurements::timer().synchronize_and_start("build_first_cag");
         CAGBuilder<StaticGraph> 
           first_contraction(g, g_labels, config_, rank_, size_);
         auto cag 
           = first_contraction.BuildComponentAdjacencyGraph<StaticGraph>();
+	kamping::measurements::timer().stop();
+
 #ifndef NDEBUG
         OutputStats<StaticGraph>(cag);
 #endif
@@ -152,7 +161,9 @@ class ExponentialContraction {
         // Keep contraction labeling for later
         contraction_timer_.Restart();
         std::vector<VertexID> cag_labels(cag.GetVertexVectorSize(), 0);
+	kamping::measurements::timer().synchronize_and_start("find_local_components_on_cag");
         FindLocalComponents<StaticGraph>(cag, cag_labels);
+	kamping::measurements::timer().stop();
 #ifndef NSTATUS
         if (rank_ == ROOT || config_.print_verbose)
           std::cout << "[STATUS] |- R" << rank_ << " Finding local components on cag took " 
@@ -161,10 +172,12 @@ class ExponentialContraction {
 
         // Second round of contraction
         contraction_timer_.Restart();
+	kamping::measurements::timer().synchronize_and_start("build_second_cag");
         CAGBuilder<StaticGraph> 
           second_contraction(cag, cag_labels, config_, rank_, size_);
         auto ccag 
           = second_contraction.BuildComponentAdjacencyGraph<DynamicGraphCommunicator>();
+	kamping::measurements::timer().stop();
         ccag.ResetCommunicator();
 #ifndef NDEBUG
         OutputStats<DynamicGraphCommunicator>(ccag);
@@ -195,8 +208,10 @@ class ExponentialContraction {
         exp_contraction_ = new DynamicContraction(ccag, config_, rank_, size_);
 
         // Main decomposition algorithm
-        contraction_timer_.Restart(); 
+        contraction_timer_.Restart();
+	kamping::measurements::timer().synchronize_and_start("perform_decomposition_on_ccag");
         PerformDecomposition(ccag);
+	kamping::measurements::timer().stop();
 #ifndef NSTATUS
         if (rank_ == ROOT || config_.print_verbose)
           std::cout << "[STATUS] |- R" << rank_ << " Resolving connectivity took " 
@@ -205,8 +220,12 @@ class ExponentialContraction {
         if (config_.replicate_high_degree) {
           RemoveReplicatedVertices(ccag);
         }
+	kamping::measurements::timer().synchronize_and_start("apply_to_local_components");
         ApplyToLocalComponents(ccag, cag, cag_labels);
+	kamping::measurements::timer().stop();
+	kamping::measurements::timer().synchronize_and_start("apply_to_local_components_final");
         ApplyToLocalComponents(cag, cag_labels, g, g_labels);
+	kamping::measurements::timer().stop();
         // Get stats
         comm_time_ += first_contraction.GetCommTime() + second_contraction.GetCommTime() 
                       + exp_contraction_->GetCommTime()

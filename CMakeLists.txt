@@ -58,6 +58,15 @@ FetchContent_Declare(sparsehash
   EXCLUDE_FROM_ALL
 )
 FetchContent_MakeAvailable(sparsehash)
+
+FetchContent_Declare(
+  kamping
+  GIT_REPOSITORY https://github.com/kamping-site/kamping
+  GIT_TAG v0.2.0
+  SYSTEM
+  EXCLUDE_FROM_ALL
+)
+FetchContent_MakeAvailable(kamping)
 # find_package(Sparsehash REQUIRED)
 
 # add_subdirectory(extern/KaHIP)
@@ -135,6 +144,7 @@ set(LIBS
         KaGen::KaGen
         ips4o
 	sparsehash::sparsehash
+	kamping::kamping
         # bliss
         #kahip
         # asan
